@@ -1,0 +1,174 @@
+@import url("https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&display=swap");
+@import "tailwindcss";
+
+:root {
+  color-scheme: dark;
+  font-family:
+    "Fira Code", "Cascadia Code", "JetBrains Mono", "SFMono-Regular", Consolas,
+    "Liberation Mono", ui-monospace, monospace;
+  font-synthesis: none;
+  font-variant-ligatures: contextual;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100svh;
+  background:
+    radial-gradient(circle at 18% 10%, rgba(126, 87, 255, 0.2), transparent 24rem),
+    radial-gradient(circle at 78% 6%, rgba(34, 197, 94, 0.11), transparent 20rem),
+    linear-gradient(180deg, #0b0c12 0%, #08090d 45%, #0a0b10 100%);
+}
+
+#root {
+  min-height: 100svh;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
+
+* {
+  font-family: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+::selection {
+  background: rgba(167, 139, 250, 0.35);
+  color: #ffffff;
+}
+
+.app-grid {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+  background-size: 72px 72px;
+  mask-image: linear-gradient(to bottom, black 0%, transparent 70%);
+}
+
+.glass-panel {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.035)),
+    rgba(11, 12, 18, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(22px);
+}
+
+.soft-border {
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.input-shadow {
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.08),
+    0 18px 70px rgba(0, 0, 0, 0.34),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.tag-goal {
+  --tag-bg: rgba(139, 92, 246, 0.18);
+  --tag-text: #c4b5fd;
+  --tag-border: rgba(167, 139, 250, 0.34);
+}
+
+.tag-constraints {
+  --tag-bg: rgba(56, 189, 248, 0.14);
+  --tag-text: #93c5fd;
+  --tag-border: rgba(96, 165, 250, 0.3);
+}
+
+.tag-output_format {
+  --tag-bg: rgba(34, 197, 94, 0.14);
+  --tag-text: #86efac;
+  --tag-border: rgba(74, 222, 128, 0.3);
+}
+
+.tag-style {
+  --tag-bg: rgba(245, 158, 11, 0.14);
+  --tag-text: #fcd34d;
+  --tag-border: rgba(251, 191, 36, 0.32);
+}
+
+.tag-neutral {
+  --tag-bg: rgba(148, 163, 184, 0.12);
+  --tag-text: #cbd5e1;
+  --tag-border: rgba(148, 163, 184, 0.24);
+}
+
+.tag-shell {
+  background: var(--tag-bg);
+  border-color: var(--tag-border);
+}
+
+.tag-label {
+  color: var(--tag-text);
+}
+
+@keyframes dropdown-in {
+  from {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes modal-in {
+  from {
+    opacity: 0;
+    transform: translateX(22px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-dropdown-in {
+  animation: dropdown-in 180ms ease-out both;
+}
+
+.animate-panel-in {
+  animation: panel-in 260ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.animate-modal-in {
+  animation: modal-in 220ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
