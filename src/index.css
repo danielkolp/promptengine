@@ -78,6 +78,22 @@ button:disabled {
     inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
+.logo-lockup {
+  position: relative;
+  width: clamp(14rem, 14vw, 17rem);
+  aspect-ratio: 753 / 305;
+  overflow: hidden;
+}
+
+.logo-lockup img {
+  position: absolute;
+  left: -14.87%;
+  top: -118.69%;
+  width: 135.99%;
+  max-width: none;
+  height: auto;
+}
+
 .tag-goal {
   --tag-bg: rgba(139, 92, 246, 0.18);
   --tag-text: #c4b5fd;
