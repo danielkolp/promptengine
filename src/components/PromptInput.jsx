@@ -138,11 +138,11 @@ export default function PromptInput({ tags, setTags, freeText, setFreeText, onRe
                     }}
                     onKeyDown={handleEnter}
                     placeholder={config.placeholder}
-                    className="col-start-1 row-start-1 min-h-[2.75rem] w-full resize-none overflow-hidden break-all bg-transparent px-3 py-2 text-sm leading-6 text-white [overflow-wrap:anywhere] [white-space:pre-wrap] placeholder:text-[0.68rem] placeholder:leading-5 placeholder:text-slate-500 focus:outline-none"
+                    className="col-start-1 row-start-1 min-h-[2.75rem] w-full resize-none overflow-hidden break-words bg-transparent px-3 py-2 text-sm leading-6 text-white [white-space:pre-wrap] placeholder:text-[0.68rem] placeholder:leading-5 placeholder:text-slate-500 focus:outline-none"
                   />
                   <div
                     aria-hidden="true"
-                    className={`invisible col-start-1 row-start-1 min-h-[2.75rem] whitespace-pre-wrap break-all px-3 py-2 [overflow-wrap:anywhere] ${
+                    className={`invisible col-start-1 row-start-1 min-h-[2.75rem] whitespace-pre-wrap break-words px-3 py-2 ${
                       tag.value ? 'text-sm leading-6' : 'text-[0.68rem] leading-5'
                     }`}
                   >

@@ -81,14 +81,14 @@ button:disabled {
 .logo-lockup {
   position: relative;
   width: clamp(14rem, 14vw, 17rem);
-  aspect-ratio: 753 / 305;
+  aspect-ratio: 753 / 320;
   overflow: hidden;
 }
 
 .logo-lockup img {
   position: absolute;
   left: -14.87%;
-  top: -118.69%;
+  top: -113.13%;
   width: 135.99%;
   max-width: none;
   height: auto;
