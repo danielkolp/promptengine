@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { memo, useEffect, useMemo, useState } from 'react'
 import Particles, { initParticlesEngine } from '@tsparticles/react'
 import { loadSlim } from '@tsparticles/slim'
 import { Settings2 } from 'lucide-react'
@@ -9,6 +9,8 @@ import { refinePromptWithGroq } from './utils/groqClient'
 import { createDefaultTags } from './utils/promptTemplates'
 import logo from './assets/logo.png'
 import './index.css'
+
+const StableParticles = memo(Particles)
 
 let particlesEngineInitPromise
 
@@ -111,7 +113,7 @@ function App() {
   return (
     <main className="relative min-h-screen overflow-x-hidden text-slate-100">
       {particlesReady && (
-        <Particles
+        <StableParticles
           id="tsparticles"
           className="pointer-events-none fixed inset-0 z-0 opacity-100"
           options={particleOptions}
