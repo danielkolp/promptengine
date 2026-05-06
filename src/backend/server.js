@@ -16,6 +16,17 @@ const MIME_TYPES = {
 }
 const ALLOWED_ORIGINS = new Set(['http://localhost:5173', 'https://danielkolp.github.io'])
 
+class AppError extends Error {
+  constructor(status, title, message, { details, code } = {}) {
+    super(message)
+    this.name = 'AppError'
+    this.status = status
+    this.title = title
+    this.details = details
+    this.code = code
+  }
+}
+
 function loadEnvFile() {
   const envPath = resolve(__dirname, '../.env')
 
@@ -229,6 +240,30 @@ function sendJson(req, res, status, data) {
   res.end(JSON.stringify(data))
 }
 
+function sendError(req, res, error) {
+  const isAppError = error instanceof AppError
+  const status = isAppError ? error.status : 500
+  const title = isAppError ? error.title : 'Prompt refinement failed'
+  const message = error instanceof Error ? error.message : 'Failed to refine prompt.'
+  const details = isAppError ? error.details : undefined
+  const code = isAppError ? error.code : 'internal_error'
+
+  if (!isAppError) {
+    console.error(error)
+  }
+
+  sendJson(req, res, status, {
+    error: {
+      title,
+      message,
+      details,
+      code,
+    },
+    code,
+    details,
+  })
+}
+
 function sendFile(res, filePath) {
   const extension = extname(filePath)
   res.writeHead(200, {
@@ -240,20 +275,32 @@ function sendFile(res, filePath) {
 function readJsonBody(req) {
   return new Promise((resolveBody, rejectBody) => {
     let body = ''
+    let rejected = false
 
     req.on('data', (chunk) => {
+      if (rejected) return
+
       body += chunk
       if (body.length > 1_000_000) {
+        rejected = true
+        rejectBody(new AppError(413, 'Request too large', 'The prompt request is too large.', {
+          details: 'Reduce the prompt text or tag content and try again.',
+          code: 'request_body_too_large',
+        }))
         req.destroy()
-        rejectBody(new Error('Request body is too large.'))
       }
     })
 
     req.on('end', () => {
+      if (rejected) return
+
       try {
         resolveBody(body ? JSON.parse(body) : {})
       } catch {
-        rejectBody(new Error('Request body must be valid JSON.'))
+        rejectBody(new AppError(400, 'Invalid request', 'Request body must be valid JSON.', {
+          details: 'The frontend sent a malformed request to /api/refine.',
+          code: 'invalid_json_request',
+        }))
       }
     })
 
@@ -273,8 +320,21 @@ function safeParseJson(text) {
     return JSON.parse(text)
   } catch {
     const match = text.match(/\{[\s\S]*\}/)
-    if (!match) throw new Error('Groq did not return valid JSON.')
-    return JSON.parse(match[0])
+    if (!match) {
+      throw new AppError(502, 'Invalid model response', 'Groq returned text instead of the required JSON.', {
+        details: text.slice(0, 500),
+        code: 'invalid_model_json',
+      })
+    }
+
+    try {
+      return JSON.parse(match[0])
+    } catch {
+      throw new AppError(502, 'Invalid model response', 'Groq returned malformed JSON.', {
+        details: text.slice(0, 500),
+        code: 'invalid_model_json',
+      })
+    }
   }
 }
 
@@ -296,40 +356,114 @@ function validateResult(data) {
   }
 }
 
+function buildGroqError(response, data, responseText) {
+  const groqMessage = data.error?.message || responseText.slice(0, 500) || `Groq returned HTTP ${response.status}.`
+
+  if (response.status === 401 || response.status === 403) {
+    return new AppError(502, 'Groq authentication failed', 'Groq rejected the backend API key.', {
+      details: groqMessage,
+      code: 'groq_auth_failed',
+    })
+  }
+
+  if (response.status === 429) {
+    return new AppError(429, 'Groq rate limit reached', 'Groq is rate limiting prompt refinement requests.', {
+      details: groqMessage,
+      code: 'groq_rate_limited',
+    })
+  }
+
+  if (response.status === 400) {
+    return new AppError(502, 'Groq rejected the request', 'Groq rejected the prompt refinement request configuration.', {
+      details: groqMessage,
+      code: 'groq_bad_request',
+    })
+  }
+
+  if (response.status >= 500) {
+    return new AppError(502, 'Groq is temporarily unavailable', 'Groq failed while processing the prompt refinement request.', {
+      details: groqMessage,
+      code: 'groq_unavailable',
+    })
+  }
+
+  return new AppError(502, 'Groq request failed', 'Groq could not refine the prompt.', {
+    details: groqMessage,
+    code: 'groq_request_failed',
+  })
+}
+
 async function refinePrompt({ tags, freeText, model }) {
   const apiKey = process.env.GROQ_API_KEY
 
   if (!apiKey) {
-    throw new Error('Missing GROQ_API_KEY in src/.env.')
+    throw new AppError(500, 'Backend API key missing', 'The backend is missing GROQ_API_KEY.', {
+      details: 'Set GROQ_API_KEY in src/.env locally or in your production backend environment, then restart the server.',
+      code: 'missing_groq_api_key',
+    })
   }
 
-  const response = await fetch(GROQ_URL, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: model || process.env.GROQ_MODEL || DEFAULT_MODEL,
-      temperature: 0.35,
-      response_format: { type: 'json_object' },
-      messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
-        { role: 'user', content: buildUserPrompt({ tags, freeText }) },
-      ],
-    }),
-  })
+  const normalizedTags = normalizeTags(tags)
+  const hasTagValues = Object.values(normalizedTags).some((values) => values.length > 0)
 
-  const data = await response.json().catch(() => ({}))
+  if (!freeText?.trim() && !hasTagValues) {
+    throw new AppError(400, 'Prompt is empty', 'Add prompt text or fill at least one tag before refining.', {
+      code: 'empty_prompt',
+    })
+  }
+
+  let response
+
+  try {
+    response = await fetch(GROQ_URL, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: model || process.env.GROQ_MODEL || DEFAULT_MODEL,
+        temperature: 0.35,
+        response_format: { type: 'json_object' },
+        messages: [
+          { role: 'system', content: SYSTEM_PROMPT },
+          { role: 'user', content: buildUserPrompt({ tags: normalizedTags, freeText }) },
+        ],
+      }),
+    })
+  } catch (error) {
+    throw new AppError(502, 'Groq is unreachable', 'The backend could not connect to Groq.', {
+      details: error instanceof Error ? error.message : String(error),
+      code: 'groq_network_error',
+    })
+  }
+
+  const responseText = await response.text()
+  let data = {}
+
+  if (responseText) {
+    try {
+      data = JSON.parse(responseText)
+    } catch {
+      if (response.ok) {
+        throw new AppError(502, 'Invalid Groq response', 'Groq returned a response the backend could not parse as JSON.', {
+          details: responseText.slice(0, 500),
+          code: 'invalid_groq_response',
+        })
+      }
+    }
+  }
 
   if (!response.ok) {
-    const message = data.error?.message || `Groq request failed with status ${response.status}.`
-    throw new Error(message)
+    throw buildGroqError(response, data, responseText)
   }
 
   const content = data.choices?.[0]?.message?.content
   if (!content) {
-    throw new Error('Groq returned an empty completion.')
+    throw new AppError(502, 'Empty Groq response', 'Groq returned an empty completion.', {
+      details: 'The response did not include choices[0].message.content.',
+      code: 'empty_groq_completion',
+    })
   }
 
   return validateResult(safeParseJson(content))
@@ -375,9 +509,7 @@ const server = http.createServer(async (req, res) => {
     })
     sendJson(req, res, 200, result)
   } catch (error) {
-    sendJson(req, res, 500, {
-      error: error instanceof Error ? error.message : 'Failed to refine prompt.',
-    })
+    sendError(req, res, error)
   }
 })
 

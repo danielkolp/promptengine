@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import {
+  AlertTriangle,
   Check,
   Clipboard,
   Layers3,
@@ -24,6 +25,23 @@ const variantItems = [
   { key: 'more_detailed', label: 'More detailed' },
   { key: 'more_creative', label: 'More creative' },
 ]
+
+function normalizeError(error) {
+  if (typeof error === 'string') {
+    return {
+      title: 'Prompt refinement failed',
+      message: error,
+    }
+  }
+
+  return {
+    title: error?.title || 'Prompt refinement failed',
+    message: error?.message || 'Something went wrong while refining the prompt.',
+    details: error?.details,
+    status: error?.status,
+    code: error?.code,
+  }
+}
 
 export default function ResultPanel({ result, loading }) {
   const [copied, setCopied] = useState(false)
@@ -57,9 +75,38 @@ export default function ResultPanel({ result, loading }) {
   if (!result) return null
 
   if (result.error) {
+    const error = normalizeError(result.error)
+
     return (
-      <div className="rounded-3xl border border-red-400/25 bg-red-950/30 p-5 text-sm text-red-100">
-        {result.error}
+      <div className="glass-panel animate-panel-in rounded-3xl border-red-400/30 bg-red-950/30 p-5 text-sm text-red-100 sm:p-6">
+        <div className="flex items-start gap-3">
+          <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-red-400/15 text-red-200">
+            <AlertTriangle className="h-5 w-5" />
+          </span>
+          <div className="min-w-0">
+            <h2 className="text-base font-semibold text-white">{error.title}</h2>
+            <p className="mt-1 leading-6">{error.message}</p>
+            {error.details && (
+              <p className="mt-3 whitespace-pre-wrap rounded-2xl border border-red-300/15 bg-black/20 p-3 leading-6 text-red-50/90">
+                {error.details}
+              </p>
+            )}
+            {(error.status || error.code) && (
+              <div className="mt-3 flex flex-wrap gap-2 text-xs text-red-100/80">
+                {error.status && (
+                  <span className="rounded-full border border-red-300/15 bg-red-400/10 px-2.5 py-1">
+                    HTTP {error.status}
+                  </span>
+                )}
+                {error.code && (
+                  <span className="rounded-full border border-red-300/15 bg-red-400/10 px-2.5 py-1">
+                    {error.code}
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     )
   }

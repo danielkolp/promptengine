@@ -101,7 +101,15 @@ function App() {
       })
       setResult(res)
     } catch (err) {
-      setResult({ error: err instanceof Error ? err.message : String(err) })
+      setResult({
+        error: {
+          title: err?.title || 'Prompt refinement failed',
+          message: err instanceof Error ? err.message : String(err),
+          details: err?.details,
+          status: err?.status,
+          code: err?.code,
+        },
+      })
     } finally {
       setLoading(false)
     }
