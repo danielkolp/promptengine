@@ -1,19 +1,43 @@
 export const TAG_CONFIG = {
-  goal: {
-    label: 'Goal',
-    placeholder: 'What should the AI help with?',
+  task: {
+    label: 'Task',
+    placeholder: 'Plan a coffee shop grand opening',
+    tooltip: 'The job you want done. Start with a verb: write, compare, plan, fix, or summarize.',
   },
-  constraints: {
-    label: 'Constraints',
-    placeholder: 'Rules, limits, or preferences',
+  context_files: {
+    label: 'Context Files',
+    placeholder: 'Files uploaded with prompt: menu.pdf, budget.xlsx',
+    tooltip: 'These are the files you upload in addition to the prompt, plus what each file contains.',
   },
-  output_format: {
-    label: 'Output format',
-    placeholder: 'How should the answer be shaped?',
+  reference: {
+    label: 'Reference',
+    placeholder: 'Match the sample cafe flyer tone',
+    tooltip: 'An example to follow for tone, structure, format, or level of detail.',
   },
-  style: {
-    label: 'Style',
-    placeholder: 'Tone, depth, or pacing',
+  success_brief: {
+    label: 'Success Brief',
+    placeholder: 'A launch plan the owner can approve',
+    tooltip: 'What the finished answer should be, who it is for, and how you will know it worked.',
+  },
+  rules: {
+    label: 'Rules',
+    placeholder: 'Keep it low-budget and family-friendly',
+    tooltip: 'Hard limits and preferences: length, tone, sources, budget, tools, or things to avoid.',
+  },
+  conversation: {
+    label: 'Conversation',
+    placeholder: 'Ask 3 questions before making the plan',
+    tooltip: 'How the AI should collaborate: ask questions first, state assumptions, or proceed directly.',
+  },
+  plan: {
+    label: 'Plan',
+    placeholder: 'Give a 5-step launch timeline first',
+    tooltip: 'The planning style you want: quick outline, step limit, milestones, or order of work.',
+  },
+  alignment: {
+    label: 'Alignment',
+    placeholder: 'Final plan must fit a small cafe team',
+    tooltip: 'Final checks the AI should make so the answer matches the task, rules, and success brief.',
   },
 }
 
@@ -36,19 +60,27 @@ export function createDefaultTags() {
 export const DEFAULT_TAGS = createDefaultTags()
 
 export const SUGGESTIONS = {
-  goal: ['build', 'learn', 'write', 'plan', 'design', 'fix'],
-  constraints: ['no coding', 'beginner-friendly', 'low budget', 'fast', 'simple'],
-  output_format: ['structured plan', 'checklist', 'code', 'strategy', 'table'],
-  style: ['no fluff', 'concise', 'detailed', 'creative', 'aggressive'],
+  task: ['write', 'build', 'analyze', 'revise', 'plan', 'debug'],
+  context_files: ['README.md - requirements', 'brief.md - scope', 'notes.md - constraints'],
+  reference: ['style sample', 'example output', 'competitor page', 'brand guide'],
+  success_brief: ['ready to publish', 'approved on first pass', 'clear next steps'],
+  rules: ['no fluff', 'cite sources', 'avoid jargon', 'stay concise'],
+  conversation: ['ask clarifying questions first', 'work step by step', 'state assumptions'],
+  plan: ['5 steps maximum', 'outline first', 'include milestones'],
+  alignment: ['confirm fit before final', 'list risks', 'check against rules'],
 }
 
 export const RESULT_SCHEMA = {
   refined_prompt: '',
   breakdown: {
-    goal: '',
-    constraints: '',
-    output_format: '',
-    style: '',
+    task: '',
+    context_files: '',
+    reference: '',
+    success_brief: '',
+    rules: '',
+    conversation: '',
+    plan: '',
+    alignment: '',
   },
   variants: {
     more_concise: '',

@@ -1,23 +1,31 @@
 import { useState } from 'react'
 import {
   AlertTriangle,
+  BookOpen,
   Check,
   Clipboard,
+  ClipboardList,
+  Files,
   Layers3,
   ListChecks,
-  Palette,
+  MessageSquareText,
+  Route,
+  Scale,
   ShieldCheck,
   Sparkles,
-  Target,
   WandSparkles,
   Zap,
 } from 'lucide-react'
 
 const breakdownItems = [
-  { key: 'goal', label: 'Goal', icon: Target },
-  { key: 'constraints', label: 'Constraints', icon: ShieldCheck },
-  { key: 'output_format', label: 'Output Format', icon: ListChecks },
-  { key: 'style', label: 'Style', icon: Palette },
+  { key: 'task', label: 'Task', icon: ClipboardList },
+  { key: 'context_files', label: 'Context Files', icon: Files },
+  { key: 'reference', label: 'Reference', icon: BookOpen },
+  { key: 'success_brief', label: 'Success Brief', icon: ListChecks },
+  { key: 'rules', label: 'Rules', icon: ShieldCheck },
+  { key: 'conversation', label: 'Conversation', icon: MessageSquareText },
+  { key: 'plan', label: 'Plan', icon: Route },
+  { key: 'alignment', label: 'Alignment', icon: Scale },
 ]
 
 const variantItems = [

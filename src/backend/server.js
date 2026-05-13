@@ -14,7 +14,7 @@ const MIME_TYPES = {
   '.js': 'text/javascript; charset=utf-8',
   '.svg': 'image/svg+xml',
 }
-const ALLOWED_ORIGINS = new Set(['http://localhost:5173', 'https://danielkolp.github.io'])
+const DEFAULT_ALLOWED_ORIGINS = ['http://localhost:5173', 'https://danielkolp.github.io']
 
 class AppError extends Error {
   constructor(status, title, message, { details, code } = {}) {
@@ -28,9 +28,16 @@ class AppError extends Error {
 }
 
 function loadEnvFile() {
-  const envPath = resolve(__dirname, '../.env')
+  const envPaths = [
+    resolve(__dirname, '../../.env'),
+    resolve(__dirname, '../../.env.local'),
+    resolve(__dirname, '../.env'),
+    resolve(__dirname, '../.env.local'),
+  ]
 
-  try {
+  for (const envPath of envPaths) {
+    if (!existsSync(envPath)) continue
+
     const content = readFileSync(envPath, 'utf8')
     for (const line of content.split(/\r?\n/)) {
       const trimmed = line.trim()
@@ -44,8 +51,6 @@ function loadEnvFile() {
         process.env[key] = value
       }
     }
-  } catch {
-    // The request handler reports a clear missing-key error when needed.
   }
 }
 
@@ -60,10 +65,14 @@ Return this exact shape:
 {
   "refined_prompt": "string",
   "breakdown": {
-    "goal": "string",
-    "constraints": "string",
-    "output_format": "string",
-    "style": "string"
+    "task": "string",
+    "context_files": "string",
+    "reference": "string",
+    "success_brief": "string",
+    "rules": "string",
+    "conversation": "string",
+    "plan": "string",
+    "alignment": "string"
   },
   "variants": {
     "more_concise": "string",
@@ -77,51 +86,84 @@ Input shape:
 {
   "free_text": "string",
   "tags": {
-    "goal": ["string"],
-    "constraints": ["string"],
-    "output_format": ["string"],
-    "style": ["string"]
+    "task": ["string"],
+    "context_files": ["string"],
+    "reference": ["string"],
+    "success_brief": ["string"],
+    "rules": ["string"],
+    "conversation": ["string"],
+    "plan": ["string"],
+    "alignment": ["string"]
   }
 }
 
 Core job:
-Transform vague user input into a prompt that would get a useful, specific, high-quality answer from another AI.
+Transform vague user input into a compact, structured prompt that would get a useful, specific, high-quality answer from another AI.
+
+Use this prompt anatomy:
+- Task
+- Context Files
+- Reference
+- Success Brief
+- Rules
+- Conversation
+- Plan
+- Alignment
 
 Rules:
 - The refined_prompt must be written as a command to another AI.
+- The refined_prompt should use the anatomy headings above, in that order, when the section is useful.
+- Keep each section short: one concise sentence or 1-3 compact bullets.
+- Do not include long explanatory paragraphs.
+- Do not copy sample paragraph language from prompt-anatomy guides.
 - Do NOT simply restate the user's input.
-- Add missing context, assumptions, deliverables, and quality standards.
+- Add missing context, assumptions, deliverables, and quality standards only when they make the prompt easier to execute.
 - Make the prompt actionable enough that the AI knows exactly what to produce.
 - Respect the user's tags strictly.
 - Respect every value in every tag array.
 - Multiple values in one tag array mean the user intentionally added repeated tag blocks.
 - Combine repeated tags thoughtfully. Do not ignore, overwrite, or contradict earlier tag values.
-- If output_format is missing, infer the most useful format.
-- If constraints are vague, convert them into practical constraints.
-- If style is vague, convert it into specific tone and formatting rules.
+- If task is missing, infer the task from free_text.
+- If context_files is missing, say no context files were provided only if that helps the final prompt.
+- If reference is missing, say no reference was provided only if that helps the final prompt.
+- If success_brief is vague, define output type, audience outcome, what to avoid, and success criteria.
+- If rules are vague, convert them into practical constraints.
+- If conversation is vague, define when to ask clarifying questions and how to proceed.
+- If plan is vague, define a short execution plan or planning limit.
+- If alignment is vague, define the checks the AI should make before finalizing.
 - Avoid generic phrases like "basic features," "user-friendly," "innovative," "comprehensive," unless they are explained concretely.
 - Do not recommend advanced features unless the user asked for them.
 - Do not add AI, machine learning, blockchain, automation, or "innovative" features unless the user explicitly asks.
-- Keep the refined_prompt between 110 and 180 words.
+- Keep the refined_prompt between 120 and 220 words.
 - Variants must be genuinely different prompt versions, not summaries.
-- Prefer lists and structured instructions over long sentences.
+- Prefer labeled lines and structured instructions over long sentences.
 
 For the breakdown:
-- Goal = what the user wants to create/do.
-- Constraints = hard limits and assumptions.
-- Output Format = the exact response structure the user wants.
-- Style = tone, depth, and formatting expectations.
+- Task = what the user wants the next AI to do.
+- Context Files = files, links, or source material the next AI should read.
+- Reference = examples, samples, patterns, tone, or structure to match.
+- Success Brief = output type, audience reaction, success criteria, and avoidances.
+- Rules = hard limits, standards, constraints, and forbidden moves.
+- Conversation = how the AI should interact before or during execution.
+- Plan = required planning approach, sequence, or step limit.
+- Alignment = assumptions, checks, or approval points before final execution.
+- Keep each breakdown value concise. Use "Not specified" when nothing is provided or safely inferable.
 
 For why_this_works:
-- Explain what was added or changed to improve the prompt (e.g. added structure, defined sections, clarified constraints).
-- Do NOT use vague phrases like "clear goal" or "specific constraints".
+- Explain what was added or changed to improve the prompt.
+- Do NOT use vague phrases like "clear task" or "specific constraints".
 - Keep each item under 18 words.
 
 Variants rules:
 - Each variant must still produce a usable, high-quality prompt.
 - Variants must differ in structure or level of specificity, not just wording.
-- more_detailed must introduce additional required sections or evaluation criteria.
-- more_creative must change framing or angle WITHOUT violating constraints.
+- more_concise must be a shorter version of refined_prompt that preserves the core task, rules, and deliverables.
+- more_detailed must be an expanded version of refined_prompt, not a summary and not a separate unrelated prompt.
+- more_detailed must preserve every important instruction from refined_prompt and add extra specificity.
+- more_detailed must be clearly longer and more detailed than refined_prompt, ideally 220-340 words.
+- more_detailed should add useful sections such as deliverables, success checks, assumptions, edge cases, examples, or review criteria.
+- more_detailed should use headings and bullets instead of one large paragraph.
+- more_creative must change framing or angle WITHOUT violating rules.
 
 Quality enforcement:
 
@@ -130,6 +172,7 @@ The refined_prompt MUST:
 - Include at least 4–7 explicitly named outputs or deliverables
 - Define the context clearly (who it’s for, what situation).
 - Make it possible to execute immediately without further clarification.
+- Guide the next AI toward a best approach, not a neutral list of possibilities.
 
 Avoid weak instructions like:
 - “create a plan”
@@ -180,7 +223,7 @@ Consistency enforcement:
 The refined_prompt must not contradict itself.
 
 Example:
-- If constraints say "no coding", do not mention technical implementations.
+- If rules say "no coding", do not mention technical implementations.
 - If speed is prioritized, do not introduce complex or time-consuming steps.
 
 Decision enforcement:
@@ -189,7 +232,7 @@ The refined_prompt must guide the next AI toward a clear direction, not just a s
 
 - When listing tools, frame them as recommended choices, not neutral suggestions.
 - When defining sections, imply priority (e.g. essential vs optional).
-- When constraints exist (e.g. speed, no coding), bias the entire output toward those constraints.
+- When rules exist (e.g. speed, no coding), bias the entire output toward those rules.
 
 Avoid neutral phrasing like:
 - "recommend tools such as..."
@@ -213,10 +256,14 @@ function tagValues(value) {
 
 function normalizeTags(tags = {}) {
   return {
-    goal: tagValues(tags.goal),
-    constraints: tagValues(tags.constraints),
-    output_format: tagValues(tags.output_format),
-    style: tagValues(tags.style),
+    task: tagValues(tags.task),
+    context_files: tagValues(tags.context_files),
+    reference: tagValues(tags.reference),
+    success_brief: tagValues(tags.success_brief),
+    rules: tagValues(tags.rules),
+    conversation: tagValues(tags.conversation),
+    plan: tagValues(tags.plan),
+    alignment: tagValues(tags.alignment),
   }
 }
 
@@ -227,13 +274,20 @@ function getCorsOrigin(req) {
     return '*'
   }
 
-  return ALLOWED_ORIGINS.has(origin) ? origin : 'null'
+  const allowedOrigins = new Set(
+    (process.env.ALLOWED_ORIGINS || DEFAULT_ALLOWED_ORIGINS.join(','))
+      .split(',')
+      .map((allowedOrigin) => allowedOrigin.trim())
+      .filter(Boolean),
+  )
+
+  return allowedOrigins.has(origin) ? origin : 'null'
 }
 
 function sendJson(req, res, status, data) {
   res.writeHead(status, {
     'Access-Control-Allow-Origin': getCorsOrigin(req),
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
     'Content-Type': 'application/json; charset=utf-8',
   })
@@ -342,10 +396,14 @@ function validateResult(data) {
   return {
     refined_prompt: data.refined_prompt || '',
     breakdown: {
-      goal: data.breakdown?.goal || '',
-      constraints: data.breakdown?.constraints || '',
-      output_format: data.breakdown?.output_format || '',
-      style: data.breakdown?.style || '',
+      task: data.breakdown?.task || '',
+      context_files: data.breakdown?.context_files || '',
+      reference: data.breakdown?.reference || '',
+      success_brief: data.breakdown?.success_brief || '',
+      rules: data.breakdown?.rules || '',
+      conversation: data.breakdown?.conversation || '',
+      plan: data.breakdown?.plan || '',
+      alignment: data.breakdown?.alignment || '',
     },
     variants: {
       more_concise: data.variants?.more_concise || '',
@@ -477,6 +535,16 @@ const server = http.createServer(async (req, res) => {
 
   if (req.method === 'GET') {
     const url = new URL(req.url, `http://${req.headers.host}`)
+
+    if (url.pathname === '/api/health') {
+      sendJson(req, res, 200, {
+        ok: true,
+        model: process.env.GROQ_MODEL || DEFAULT_MODEL,
+        hasGroqKey: Boolean(process.env.GROQ_API_KEY),
+      })
+      return
+    }
+
     const requestedPath = url.pathname === '/' ? '/index.html' : url.pathname
     const filePath = resolve(join(DIST_DIR, requestedPath))
 

@@ -29,6 +29,18 @@ function resizeTextarea(node) {
   node.style.height = `${node.scrollHeight}px`
 }
 
+function CustomTooltip({ id, text, placement = 'top' }) {
+  return (
+    <span
+      id={id}
+      role="tooltip"
+      className={`custom-tooltip ${placement === 'bottom' ? 'custom-tooltip--bottom' : ''}`}
+    >
+      {text}
+    </span>
+  )
+}
+
 export default function PromptInput({ tags, setTags, freeText, setFreeText, onRefine, loading }) {
   const [showSuggestions, setShowSuggestions] = useState(false)
   const tagRefs = useRef({})
@@ -90,6 +102,7 @@ export default function PromptInput({ tags, setTags, freeText, setFreeText, onRe
             const config = TAG_CONFIG[tag.key] ?? {
               label: tag.key,
               placeholder: 'Tag value',
+              tooltip: 'Add details that help the AI understand what you want.',
             }
 
             return (
@@ -104,14 +117,16 @@ export default function PromptInput({ tags, setTags, freeText, setFreeText, onRe
                   <button
                     type="button"
                     onClick={() => focusTag(tag.id)}
-                    className="tag-label min-w-0 rounded-xl bg-white/[0.07] px-3 py-2 text-left text-xs font-semibold uppercase tracking-[0.08em] transition group-hover:bg-white/[0.1]"
+                    aria-describedby={`${tag.id}-tooltip`}
+                    aria-label={`${config.label}: ${config.tooltip}`}
+                    className="tooltip-anchor tag-label min-w-0 rounded-xl bg-white/[0.07] px-3 py-2 text-left text-xs font-semibold uppercase tracking-[0.08em] transition group-hover:bg-white/[0.1]"
                   >
                     {config.label}
+                    <CustomTooltip id={`${tag.id}-tooltip`} text={config.tooltip} placement="bottom" />
                   </button>
                   <button
                     type="button"
                     aria-label={`Remove ${config.label}`}
-                    title={`Remove ${config.label}`}
                     onClick={() => removeTag(tag.id)}
                     className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-slate-400 transition hover:bg-white/10 hover:text-white"
                   >
@@ -170,10 +185,13 @@ export default function PromptInput({ tags, setTags, freeText, setFreeText, onRe
                 key={key}
                 type="button"
                 onClick={() => addTag(key)}
-                className={`tag-${key} tag-shell inline-flex items-center gap-1.5 rounded-full border px-3 py-2 text-sm transition hover:brightness-110`}
+                aria-describedby={`quick-${key}-tooltip`}
+                aria-label={`Add ${TAG_CONFIG[key].label}: ${TAG_CONFIG[key].tooltip}`}
+                className={`tooltip-anchor tag-${key} tag-shell inline-flex items-center gap-1.5 rounded-full border px-3 py-2 text-sm transition hover:brightness-110`}
               >
                 <Plus className="tag-label h-3.5 w-3.5" />
                 <span className="tag-label">{TAG_CONFIG[key].label}</span>
+                <CustomTooltip id={`quick-${key}-tooltip`} text={TAG_CONFIG[key].tooltip} />
               </button>
             ))}
           </div>

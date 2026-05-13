@@ -1,6 +1,14 @@
 import { Plus, X } from 'lucide-react'
 import { TAG_CONFIG } from '../utils/promptTemplates'
 
+function CustomTooltip({ id, text }) {
+  return (
+    <span id={id} role="tooltip" className="custom-tooltip">
+      {text}
+    </span>
+  )
+}
+
 export default function SuggestionDropdown({ suggestions, onPick, onClose }) {
   return (
     <div className="glass-panel animate-dropdown-in rounded-3xl p-4 shadow-2xl shadow-black/40">
@@ -20,28 +28,42 @@ export default function SuggestionDropdown({ suggestions, onPick, onClose }) {
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        {Object.entries(suggestions).map(([group, items]) => (
-          <div key={group} className={`tag-${group} rounded-2xl border border-white/10 bg-black/10 p-3`}>
-            <div className="mb-2 flex items-center justify-between gap-2">
-              <span className="tag-label text-xs font-semibold uppercase tracking-[0.14em]">
-                {TAG_CONFIG[group]?.label ?? group} suggestions
-              </span>
+        {Object.entries(suggestions).map(([group, items]) => {
+          const config = TAG_CONFIG[group] ?? {
+            label: group,
+            tooltip: 'Add this detail as a new tag block.',
+          }
+
+          return (
+            <div key={group} className={`tag-${group} rounded-2xl border border-white/10 bg-black/10 p-3`}>
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <span className="tag-label text-xs font-semibold uppercase tracking-[0.14em]">
+                  {config.label} suggestions
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {items.map((item, index) => {
+                  const tooltipId = `suggestion-${group}-${index}-tooltip`
+
+                  return (
+                    <button
+                      key={item}
+                      type="button"
+                      onClick={() => onPick(group, item)}
+                      aria-describedby={tooltipId}
+                      aria-label={`Add ${item} to ${config.label}: ${config.tooltip}`}
+                      className="tooltip-anchor inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.055] px-3 py-1.5 text-sm text-slate-200 transition hover:border-white/20 hover:bg-white/[0.09] hover:text-white"
+                    >
+                      <Plus className="h-3.5 w-3.5 text-slate-500" />
+                      {item}
+                      <CustomTooltip id={tooltipId} text={`${config.label}: ${config.tooltip}`} />
+                    </button>
+                  )
+                })}
+              </div>
             </div>
-            <div className="flex flex-wrap gap-2">
-              {items.map((item) => (
-                <button
-                  key={item}
-                  type="button"
-                  onClick={() => onPick(group, item)}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.055] px-3 py-1.5 text-sm text-slate-200 transition hover:border-white/20 hover:bg-white/[0.09] hover:text-white"
-                >
-                  <Plus className="h-3.5 w-3.5 text-slate-500" />
-                  {item}
-                </button>
-              ))}
-            </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
     </div>
   )

@@ -94,28 +94,52 @@ button:disabled {
   height: auto;
 }
 
-.tag-goal {
-  --tag-bg: rgba(139, 92, 246, 0.18);
-  --tag-text: #c4b5fd;
-  --tag-border: rgba(167, 139, 250, 0.34);
+.tag-task {
+  --tag-bg: rgba(248, 113, 113, 0.16);
+  --tag-text: #fca5a5;
+  --tag-border: rgba(248, 113, 113, 0.32);
 }
 
-.tag-constraints {
+.tag-context_files {
   --tag-bg: rgba(56, 189, 248, 0.14);
   --tag-text: #93c5fd;
   --tag-border: rgba(96, 165, 250, 0.3);
 }
 
-.tag-output_format {
+.tag-reference {
   --tag-bg: rgba(34, 197, 94, 0.14);
   --tag-text: #86efac;
   --tag-border: rgba(74, 222, 128, 0.3);
 }
 
-.tag-style {
+.tag-success_brief {
   --tag-bg: rgba(245, 158, 11, 0.14);
   --tag-text: #fcd34d;
   --tag-border: rgba(251, 191, 36, 0.32);
+}
+
+.tag-rules {
+  --tag-bg: rgba(244, 114, 182, 0.13);
+  --tag-text: #f9a8d4;
+  --tag-border: rgba(244, 114, 182, 0.3);
+}
+
+.tag-conversation {
+  --tag-bg: rgba(168, 85, 247, 0.15);
+  --tag-text: #d8b4fe;
+  --tag-border: rgba(192, 132, 252, 0.31);
+}
+
+.tag-plan {
+  --tag-bg: rgba(251, 113, 133, 0.14);
+  --tag-text: #fda4af;
+  --tag-border: rgba(251, 113, 133, 0.3);
+}
+
+.tag-alignment {
+  --tag-bg: rgba(14, 165, 233, 0.14);
+  --tag-text: #7dd3fc;
+  --tag-border: rgba(56, 189, 248, 0.3);
 }
 
 .tag-neutral {
@@ -131,6 +155,55 @@ button:disabled {
 
 .tag-label {
   color: var(--tag-text);
+}
+
+.tooltip-anchor {
+  position: relative;
+  overflow: visible;
+}
+
+.custom-tooltip {
+  --tooltip-y: 0.25rem;
+  position: absolute;
+  bottom: calc(100% + 0.6rem);
+  left: 50%;
+  z-index: 80;
+  width: max-content;
+  max-width: min(19rem, calc(100vw - 2rem));
+  padding: 0.65rem 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 0.85rem;
+  background: rgba(12, 17, 29, 0.98);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.42);
+  color: #e2e8f0;
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  line-height: 1.4;
+  opacity: 0;
+  pointer-events: none;
+  text-align: left;
+  text-transform: none;
+  transform: translate(-50%, var(--tooltip-y));
+  transition:
+    opacity 140ms ease,
+    transform 140ms ease,
+    visibility 140ms ease;
+  visibility: hidden;
+  white-space: normal;
+}
+
+.custom-tooltip--bottom {
+  --tooltip-y: -0.25rem;
+  top: calc(100% + 0.6rem);
+  bottom: auto;
+}
+
+.tooltip-anchor:hover .custom-tooltip,
+.tooltip-anchor:focus-visible .custom-tooltip {
+  --tooltip-y: 0;
+  opacity: 1;
+  visibility: visible;
 }
 
 @keyframes dropdown-in {

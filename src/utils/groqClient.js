@@ -13,10 +13,14 @@ function validateResult(data) {
   return {
     refined_prompt: data.refined_prompt || '',
     breakdown: {
-      goal: data.breakdown?.goal || '',
-      constraints: data.breakdown?.constraints || '',
-      output_format: data.breakdown?.output_format || '',
-      style: data.breakdown?.style || '',
+      task: data.breakdown?.task || '',
+      context_files: data.breakdown?.context_files || '',
+      reference: data.breakdown?.reference || '',
+      success_brief: data.breakdown?.success_brief || '',
+      rules: data.breakdown?.rules || '',
+      conversation: data.breakdown?.conversation || '',
+      plan: data.breakdown?.plan || '',
+      alignment: data.breakdown?.alignment || '',
     },
     variants: {
       more_concise: data.variants?.more_concise || '',
