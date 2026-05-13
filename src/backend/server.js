@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url'
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const DEFAULT_MODEL = 'llama-3.3-70b-versatile'
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions'
+const GROQ_TIMEOUT_MS = Number(process.env.GROQ_TIMEOUT_MS || 45_000)
 const PORT = Number(process.env.PORT || 3001)
 const DIST_DIR = resolve(__dirname, '../../dist')
 const MIME_TYPES = {
@@ -302,8 +303,15 @@ function sendError(req, res, error) {
   const details = isAppError ? error.details : undefined
   const code = isAppError ? error.code : 'internal_error'
 
-  if (!isAppError) {
-    console.error(error)
+  if (status >= 500) {
+    console.error({
+      status,
+      title,
+      message,
+      code,
+      details,
+      path: req.url,
+    })
   }
 
   sendJson(req, res, status, {
@@ -471,10 +479,13 @@ async function refinePrompt({ tags, freeText, model }) {
   }
 
   let response
+  const groqController = new AbortController()
+  const groqTimeout = setTimeout(() => groqController.abort(), GROQ_TIMEOUT_MS)
 
   try {
     response = await fetch(GROQ_URL, {
       method: 'POST',
+      signal: groqController.signal,
       headers: {
         Authorization: `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
@@ -490,10 +501,25 @@ async function refinePrompt({ tags, freeText, model }) {
       }),
     })
   } catch (error) {
-    throw new AppError(502, 'Groq is unreachable', 'The backend could not connect to Groq.', {
-      details: error instanceof Error ? error.message : String(error),
-      code: 'groq_network_error',
-    })
+    const timedOut = error instanceof Error && error.name === 'AbortError'
+
+    throw new AppError(
+      timedOut ? 504 : 502,
+      timedOut ? 'Groq request timed out' : 'Groq is unreachable',
+      timedOut
+        ? 'Groq did not respond before the backend timeout.'
+        : 'The backend could not connect to Groq.',
+      {
+        details: timedOut
+          ? `No response after ${GROQ_TIMEOUT_MS}ms.`
+          : error instanceof Error
+            ? error.message
+            : String(error),
+        code: timedOut ? 'groq_timeout' : 'groq_network_error',
+      },
+    )
+  } finally {
+    clearTimeout(groqTimeout)
   }
 
   const responseText = await response.text()

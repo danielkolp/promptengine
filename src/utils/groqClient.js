@@ -69,15 +69,30 @@ async function parseResponsePayload(res) {
     }
   }
 
+  if (/^\s*[[{]/.test(text)) {
+    try {
+      return { contentType, data: JSON.parse(text), text }
+    } catch {
+      // Some hosts return JSON with the wrong content type. If parsing fails,
+      // keep the raw body so the error panel can show useful diagnostics.
+    }
+  }
+
   return { contentType, data: {}, text }
 }
 
 function buildHttpError(res, payload) {
   const serverError = payload.data.error
-  const serverMessage = typeof serverError === 'string' ? serverError : serverError?.message
-  const serverTitle = typeof serverError === 'object' ? serverError.title : payload.data.title
+  const serverMessage =
+    typeof serverError === 'string'
+      ? serverError
+      : serverError?.message || payload.data.message
+  const serverTitle =
+    typeof serverError === 'object'
+      ? serverError.title || payload.data.title
+      : payload.data.title
   const serverDetails = payload.data.details || serverError?.details
-  const serverCode = payload.data.code || serverError?.code
+  const serverCode = payload.data.code || serverError?.code || payload.data.code
 
   if (serverMessage) {
     return new PromptEngineApiError({
@@ -123,7 +138,9 @@ function buildHttpError(res, payload) {
     return new PromptEngineApiError({
       title: 'Backend error',
       message: 'The Prompt Engine backend failed while refining the prompt.',
-      details: 'Check the backend logs for the underlying Groq or server error.',
+      details: payload.text
+        ? `Server response: ${payload.text.slice(0, 500)}`
+        : 'The host returned an empty 5xx response. Check the backend deploy logs and /api/health.',
       status: res.status,
       code: 'backend_error',
     })
