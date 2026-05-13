@@ -16,6 +16,8 @@ const MIME_TYPES = {
   '.svg': 'image/svg+xml',
 }
 const DEFAULT_ALLOWED_ORIGINS = ['http://localhost:5173', 'https://danielkolp.github.io']
+let requestCounter = 0
+let lastRefineError = null
 
 class AppError extends Error {
   constructor(status, title, message, { details, code } = {}) {
@@ -56,6 +58,37 @@ function loadEnvFile() {
 }
 
 loadEnvFile()
+
+function createRequestId() {
+  requestCounter += 1
+  return `${Date.now().toString(36)}-${requestCounter.toString(36)}`
+}
+
+function logBackendEvent(event, data = {}) {
+  console.log(JSON.stringify({
+    event,
+    timestamp: new Date().toISOString(),
+    ...data,
+  }))
+}
+
+function summarizeRefineBody(body = {}) {
+  const tags = body.tags && typeof body.tags === 'object' && !Array.isArray(body.tags)
+    ? body.tags
+    : {}
+
+  return {
+    freeTextLength: typeof body.freeText === 'string' ? body.freeText.length : 0,
+    activeFields: Array.isArray(body.activeFields) ? body.activeFields : [],
+    tagValueCounts: Object.fromEntries(
+      Object.entries(tags).map(([key, value]) => [
+        key,
+        Array.isArray(value) ? value.length : Number(Boolean(value)),
+      ]),
+    ),
+    model: typeof body.model === 'string' ? body.model : undefined,
+  }
+}
 
 const SYSTEM_PROMPT = `
 You are Prompt Engine, a prompt refinement system.
@@ -317,7 +350,9 @@ function sendJson(req, res, status, data) {
     'Access-Control-Allow-Origin': getCorsOrigin(req),
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Expose-Headers': 'X-Request-Id',
     'Content-Type': 'application/json; charset=utf-8',
+    'X-Request-Id': req.requestId || '',
   })
   res.end(JSON.stringify(data))
 }
@@ -331,14 +366,25 @@ function sendError(req, res, error) {
   const code = isAppError ? error.code : 'internal_error'
 
   if (status >= 500) {
-    console.error({
+    const errorLog = {
       status,
       title,
       message,
       code,
       details,
       path: req.url,
-    })
+      requestId: req.requestId,
+      timestamp: new Date().toISOString(),
+    }
+
+    if (req.url === '/api/refine') {
+      lastRefineError = errorLog
+    }
+
+    console.error(JSON.stringify({
+      event: 'request_error',
+      ...errorLog,
+    }))
   }
 
   sendJson(req, res, status, {
@@ -587,6 +633,8 @@ async function refinePrompt({ tags, activeFields, freeText, model }) {
 }
 
 const server = http.createServer(async (req, res) => {
+  req.requestId = createRequestId()
+
   if (req.method === 'OPTIONS') {
     sendJson(req, res, 204, {})
     return
@@ -600,6 +648,7 @@ const server = http.createServer(async (req, res) => {
         ok: true,
         model: process.env.GROQ_MODEL || DEFAULT_MODEL,
         hasGroqKey: Boolean(process.env.GROQ_API_KEY),
+        lastRefineError,
       })
       return
     }
@@ -628,12 +677,21 @@ const server = http.createServer(async (req, res) => {
   }
 
   try {
+    const startedAt = Date.now()
     const body = await readJsonBody(req)
+    logBackendEvent('refine_start', {
+      requestId: req.requestId,
+      ...summarizeRefineBody(body),
+    })
     const result = await refinePrompt({
       tags: body.tags || {},
       activeFields: body.activeFields || [],
       freeText: body.freeText || '',
       model: body.model || DEFAULT_MODEL,
+    })
+    logBackendEvent('refine_success', {
+      requestId: req.requestId,
+      durationMs: Date.now() - startedAt,
     })
     sendJson(req, res, 200, result)
   } catch (error) {

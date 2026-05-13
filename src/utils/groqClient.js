@@ -46,15 +46,16 @@ function isHtmlResponse(contentType, text) {
 
 async function parseResponsePayload(res) {
   const contentType = res.headers.get('content-type') || ''
+  const requestId = res.headers.get('x-request-id') || ''
   const text = await res.text()
 
   if (!text) {
-    return { contentType, data: {}, text: '' }
+    return { contentType, data: {}, requestId, text: '' }
   }
 
   if (contentType.includes('application/json')) {
     try {
-      return { contentType, data: JSON.parse(text), text }
+      return { contentType, data: JSON.parse(text), requestId, text }
     } catch {
       throw new PromptEngineApiError({
         title: 'Invalid API response',
@@ -68,14 +69,20 @@ async function parseResponsePayload(res) {
 
   if (/^\s*[[{]/.test(text)) {
     try {
-      return { contentType, data: JSON.parse(text), text }
+      return { contentType, data: JSON.parse(text), requestId, text }
     } catch {
       // Some hosts return JSON with the wrong content type. If parsing fails,
       // keep the raw body so the error panel can show useful diagnostics.
     }
   }
 
-  return { contentType, data: {}, text }
+  return { contentType, data: {}, requestId, text }
+}
+
+function addRequestId(details, requestId) {
+  if (!requestId) return details
+
+  return details ? `${details}\nRequest ID: ${requestId}` : `Request ID: ${requestId}`
 }
 
 function buildHttpError(res, payload) {
@@ -95,7 +102,7 @@ function buildHttpError(res, payload) {
     return new PromptEngineApiError({
       title: serverTitle || 'Prompt refinement failed',
       message: serverMessage,
-      details: serverDetails,
+      details: addRequestId(serverDetails, payload.requestId),
       status: res.status,
       code: serverCode,
     })
@@ -135,9 +142,9 @@ function buildHttpError(res, payload) {
     return new PromptEngineApiError({
       title: 'Backend error',
       message: 'The Prompt Engine backend failed while refining the prompt.',
-      details: payload.text
+      details: addRequestId(payload.text
         ? `Server response: ${payload.text.slice(0, 500)}`
-        : 'The host returned an empty 5xx response. Check the backend deploy logs and /api/health.',
+        : 'The host returned an empty 5xx response. Check the backend deploy logs and /api/health.', payload.requestId),
       status: res.status,
       code: 'backend_error',
     })
@@ -162,27 +169,55 @@ function buildNetworkError(error) {
   })
 }
 
+function sleep(ms) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms)
+  })
+}
+
+function shouldRetryEmptyHostError(res, payload) {
+  return res.status >= 500 && res.status < 600 && !payload.text && !payload.data.error
+}
+
 export async function refinePromptWithGroq({
   tags,
   activeFields = Object.keys(tags || {}),
   freeText,
   model = 'llama-3.3-70b-versatile',
 }) {
-  let res
+  const body = JSON.stringify({ tags, activeFields, freeText, model })
+  let lastResponse
+  let lastPayload
 
-  try {
-    res = await fetch(getApiUrl('/api/refine'), {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ tags, activeFields, freeText, model }),
-    })
-  } catch (error) {
-    throw buildNetworkError(error)
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    let res
+
+    try {
+      res = await fetch(getApiUrl('/api/refine'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body,
+      })
+    } catch (error) {
+      throw buildNetworkError(error)
+    }
+
+    const payload = await parseResponsePayload(res)
+
+    lastResponse = res
+    lastPayload = payload
+
+    if (res.ok || !shouldRetryEmptyHostError(res, payload) || attempt === 1) {
+      break
+    }
+
+    await sleep(700)
   }
 
-  const payload = await parseResponsePayload(res)
+  const res = lastResponse
+  const payload = lastPayload
 
   if (!res.ok) {
     throw buildHttpError(res, payload)
