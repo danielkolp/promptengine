@@ -12,16 +12,13 @@ export class PromptEngineApiError extends Error {
 function validateResult(data) {
   return {
     refined_prompt: data.refined_prompt || '',
-    breakdown: {
-      task: data.breakdown?.task || '',
-      context_files: data.breakdown?.context_files || '',
-      reference: data.breakdown?.reference || '',
-      success_brief: data.breakdown?.success_brief || '',
-      rules: data.breakdown?.rules || '',
-      conversation: data.breakdown?.conversation || '',
-      plan: data.breakdown?.plan || '',
-      alignment: data.breakdown?.alignment || '',
-    },
+    breakdown: data.breakdown && typeof data.breakdown === 'object'
+      ? Object.fromEntries(
+        Object.entries(data.breakdown)
+          .filter(([, value]) => typeof value === 'string')
+          .map(([key, value]) => [key, value]),
+      )
+      : {},
     variants: {
       more_concise: data.variants?.more_concise || '',
       more_detailed: data.variants?.more_detailed || '',
@@ -165,7 +162,12 @@ function buildNetworkError(error) {
   })
 }
 
-export async function refinePromptWithGroq({ tags, freeText, model = 'llama-3.3-70b-versatile' }) {
+export async function refinePromptWithGroq({
+  tags,
+  activeFields = Object.keys(tags || {}),
+  freeText,
+  model = 'llama-3.3-70b-versatile',
+}) {
   let res
 
   try {
@@ -174,7 +176,7 @@ export async function refinePromptWithGroq({ tags, freeText, model = 'llama-3.3-
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ tags, freeText, model }),
+      body: JSON.stringify({ tags, activeFields, freeText, model }),
     })
   } catch (error) {
     throw buildNetworkError(error)

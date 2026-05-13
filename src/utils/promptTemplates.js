@@ -72,16 +72,7 @@ export const SUGGESTIONS = {
 
 export const RESULT_SCHEMA = {
   refined_prompt: '',
-  breakdown: {
-    task: '',
-    context_files: '',
-    reference: '',
-    success_brief: '',
-    rules: '',
-    conversation: '',
-    plan: '',
-    alignment: '',
-  },
+  breakdown: {},
   variants: {
     more_concise: '',
     more_detailed: '',

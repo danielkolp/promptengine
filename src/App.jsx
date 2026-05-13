@@ -92,11 +92,13 @@ function App() {
       }
       return payload
     }, {})
+    const activeFields = tags.map((tag) => tag.key)
 
     try {
       const res = await refinePromptWithGroq({
         model,
         tags: tagPayload,
+        activeFields,
         freeText: freeText.trim(),
       })
       setResult(res)

@@ -16,17 +16,18 @@ import {
   WandSparkles,
   Zap,
 } from 'lucide-react'
+import { TAG_CONFIG } from '../utils/promptTemplates'
 
-const breakdownItems = [
-  { key: 'task', label: 'Task', icon: ClipboardList },
-  { key: 'context_files', label: 'Context Files', icon: Files },
-  { key: 'reference', label: 'Reference', icon: BookOpen },
-  { key: 'success_brief', label: 'Success Brief', icon: ListChecks },
-  { key: 'rules', label: 'Rules', icon: ShieldCheck },
-  { key: 'conversation', label: 'Conversation', icon: MessageSquareText },
-  { key: 'plan', label: 'Plan', icon: Route },
-  { key: 'alignment', label: 'Alignment', icon: Scale },
-]
+const breakdownIcons = {
+  task: ClipboardList,
+  context_files: Files,
+  reference: BookOpen,
+  success_brief: ListChecks,
+  rules: ShieldCheck,
+  conversation: MessageSquareText,
+  plan: Route,
+  alignment: Scale,
+}
 
 const variantItems = [
   { key: 'more_concise', label: 'More concise' },
@@ -49,6 +50,35 @@ function normalizeError(error) {
     status: error?.status,
     code: error?.code,
   }
+}
+
+function formatBreakdownLabel(key) {
+  return TAG_CONFIG[key]?.label
+    || key
+      .split('_')
+      .filter(Boolean)
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(' ')
+}
+
+function getBreakdownItems(breakdown = {}) {
+  const orderedKeys = Object.keys(TAG_CONFIG)
+  const keys = Object.keys(breakdown).sort((a, b) => {
+    const aIndex = orderedKeys.indexOf(a)
+    const bIndex = orderedKeys.indexOf(b)
+
+    if (aIndex === -1 && bIndex === -1) return 0
+    if (aIndex === -1) return 1
+    if (bIndex === -1) return -1
+    return aIndex - bIndex
+  })
+
+  return keys.map((key) => ({
+    key,
+    label: formatBreakdownLabel(key),
+    Icon: breakdownIcons[key] || Layers3,
+    tagClass: TAG_CONFIG[key] ? `tag-${key}` : 'tag-neutral',
+  }))
 }
 
 export default function ResultPanel({ result, loading }) {
@@ -120,6 +150,7 @@ export default function ResultPanel({ result, loading }) {
   }
 
   const { refined_prompt, breakdown, variants, why_this_works } = result
+  const breakdownItems = getBreakdownItems(breakdown)
 
   return (
     <div className="glass-panel animate-panel-in rounded-3xl p-5 sm:p-6">
@@ -154,8 +185,8 @@ export default function ResultPanel({ result, loading }) {
           Breakdown
         </div>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {breakdownItems.map(({ key, label, icon: Icon }) => (
-            <div key={key} className={`tag-${key} rounded-2xl border border-white/10 bg-white/[0.03] p-4`}>
+          {breakdownItems.map(({ key, label, Icon, tagClass }) => (
+            <div key={key} className={`${tagClass} rounded-2xl border border-white/10 bg-white/[0.03] p-4`}>
               <div className="mb-3 flex items-center gap-2">
                 <Icon className="tag-label h-4 w-4" />
                 <span className="tag-label text-sm font-semibold">{label}</span>

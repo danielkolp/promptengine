@@ -66,14 +66,7 @@ Return this exact shape:
 {
   "refined_prompt": "string",
   "breakdown": {
-    "task": "string",
-    "context_files": "string",
-    "reference": "string",
-    "success_brief": "string",
-    "rules": "string",
-    "conversation": "string",
-    "plan": "string",
-    "alignment": "string"
+    "[active_or_inferred_field_key]": "string"
   },
   "variants": {
     "more_concise": "string",
@@ -86,15 +79,9 @@ Return this exact shape:
 Input shape:
 {
   "free_text": "string",
+  "active_fields": ["task", "rules", "any_custom_field"],
   "tags": {
-    "task": ["string"],
-    "context_files": ["string"],
-    "reference": ["string"],
-    "success_brief": ["string"],
-    "rules": ["string"],
-    "conversation": ["string"],
-    "plan": ["string"],
-    "alignment": ["string"]
+    "[field_key]": ["string"]
   }
 }
 
@@ -124,6 +111,10 @@ Rules:
 - Respect every value in every tag array.
 - Multiple values in one tag array mean the user intentionally added repeated tag blocks.
 - Combine repeated tags thoughtfully. Do not ignore, overwrite, or contradict earlier tag values.
+- active_fields is the current set of UI pills. Treat missing fields as intentionally removed.
+- Do not require, mention, or return breakdown entries for fields that are absent from active_fields unless free_text clearly requires that topic.
+- If a field is present in active_fields but has no tag value, infer it only when useful; otherwise put "Not specified" in breakdown.
+- Preserve custom field keys from active_fields and tags. Interpret them from their names and values.
 - If task is missing, infer the task from free_text.
 - If context_files is missing, say no context files were provided only if that helps the final prompt.
 - If reference is missing, say no reference was provided only if that helps the final prompt.
@@ -148,7 +139,10 @@ For the breakdown:
 - Conversation = how the AI should interact before or during execution.
 - Plan = required planning approach, sequence, or step limit.
 - Alignment = assumptions, checks, or approval points before final execution.
-- Keep each breakdown value concise. Use "Not specified" when nothing is provided or safely inferable.
+- Use the exact active field keys as breakdown keys, in active_fields order.
+- Add an inferred breakdown key only when it is necessary to explain the generated prompt.
+- Do not include inactive or removed fields.
+- Keep each breakdown value concise. Use "Not specified" when an active field has no provided or safely inferable value.
 
 For why_this_works:
 - Explain what was added or changed to improve the prompt.
@@ -255,17 +249,50 @@ function tagValues(value) {
     .filter(Boolean)
 }
 
+function normalizeFieldKey(key) {
+  if (typeof key !== 'string') return ''
+
+  return key
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_ -]/g, '')
+    .replace(/[\s-]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 48)
+}
+
 function normalizeTags(tags = {}) {
-  return {
-    task: tagValues(tags.task),
-    context_files: tagValues(tags.context_files),
-    reference: tagValues(tags.reference),
-    success_brief: tagValues(tags.success_brief),
-    rules: tagValues(tags.rules),
-    conversation: tagValues(tags.conversation),
-    plan: tagValues(tags.plan),
-    alignment: tagValues(tags.alignment),
+  if (!tags || typeof tags !== 'object' || Array.isArray(tags)) {
+    return {}
   }
+
+  return Object.entries(tags).reduce((normalizedTags, [rawKey, rawValue]) => {
+    const key = normalizeFieldKey(rawKey)
+    const values = tagValues(rawValue)
+
+    if (key && values.length > 0 && !['__proto__', 'constructor', 'prototype'].includes(key)) {
+      normalizedTags[key] = [...(normalizedTags[key] || []), ...values]
+    }
+
+    return normalizedTags
+  }, {})
+}
+
+function normalizeActiveFields(activeFields = [], tags = {}) {
+  const fields = Array.isArray(activeFields) ? activeFields : []
+  const fallbackFields = tags && typeof tags === 'object' && !Array.isArray(tags)
+    ? Object.keys(tags)
+    : []
+
+  return [...fields, ...fallbackFields].reduce((normalizedFields, rawKey) => {
+    const key = normalizeFieldKey(rawKey)
+
+    if (key && !normalizedFields.includes(key) && !['__proto__', 'constructor', 'prototype'].includes(key)) {
+      normalizedFields.push(key)
+    }
+
+    return normalizedFields
+  }, [])
 }
 
 function getCorsOrigin(req) {
@@ -370,9 +397,10 @@ function readJsonBody(req) {
   })
 }
 
-function buildUserPrompt({ tags = {}, freeText = '' }) {
+function buildUserPrompt({ tags = {}, activeFields = [], freeText = '' }) {
   return JSON.stringify({
     free_text: freeText,
+    active_fields: normalizeActiveFields(activeFields, tags),
     tags: normalizeTags(tags),
   })
 }
@@ -403,16 +431,13 @@ function safeParseJson(text) {
 function validateResult(data) {
   return {
     refined_prompt: data.refined_prompt || '',
-    breakdown: {
-      task: data.breakdown?.task || '',
-      context_files: data.breakdown?.context_files || '',
-      reference: data.breakdown?.reference || '',
-      success_brief: data.breakdown?.success_brief || '',
-      rules: data.breakdown?.rules || '',
-      conversation: data.breakdown?.conversation || '',
-      plan: data.breakdown?.plan || '',
-      alignment: data.breakdown?.alignment || '',
-    },
+    breakdown: data.breakdown && typeof data.breakdown === 'object'
+      ? Object.fromEntries(
+        Object.entries(data.breakdown)
+          .filter(([, value]) => typeof value === 'string')
+          .map(([key, value]) => [normalizeFieldKey(key) || key, value]),
+      )
+      : {},
     variants: {
       more_concise: data.variants?.more_concise || '',
       more_detailed: data.variants?.more_detailed || '',
@@ -459,7 +484,7 @@ function buildGroqError(response, data, responseText) {
   })
 }
 
-async function refinePrompt({ tags, freeText, model }) {
+async function refinePrompt({ tags, activeFields, freeText, model }) {
   const apiKey = process.env.GROQ_API_KEY
 
   if (!apiKey) {
@@ -470,6 +495,7 @@ async function refinePrompt({ tags, freeText, model }) {
   }
 
   const normalizedTags = normalizeTags(tags)
+  const normalizedActiveFields = normalizeActiveFields(activeFields, normalizedTags)
   const hasTagValues = Object.values(normalizedTags).some((values) => values.length > 0)
 
   if (!freeText?.trim() && !hasTagValues) {
@@ -496,7 +522,14 @@ async function refinePrompt({ tags, freeText, model }) {
         response_format: { type: 'json_object' },
         messages: [
           { role: 'system', content: SYSTEM_PROMPT },
-          { role: 'user', content: buildUserPrompt({ tags: normalizedTags, freeText }) },
+          {
+            role: 'user',
+            content: buildUserPrompt({
+              tags: normalizedTags,
+              activeFields: normalizedActiveFields,
+              freeText,
+            }),
+          },
         ],
       }),
     })
@@ -598,6 +631,7 @@ const server = http.createServer(async (req, res) => {
     const body = await readJsonBody(req)
     const result = await refinePrompt({
       tags: body.tags || {},
+      activeFields: body.activeFields || [],
       freeText: body.freeText || '',
       model: body.model || DEFAULT_MODEL,
     })
