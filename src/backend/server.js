@@ -87,6 +87,7 @@ function summarizeRefineBody(body = {}) {
       ]),
     ),
     model: typeof body.model === 'string' ? body.model : undefined,
+    targetModel: typeof body.targetModel === 'string' ? body.targetModel : undefined,
   }
 }
 
@@ -272,6 +273,56 @@ Prefer:
 
 The output should feel like it is pushing toward a best approach, not just describing possibilities.
 `
+
+// Prompts are consumed by a different model than the one refining them. Each
+// target gets a short directive appended to the system prompt so the refined
+// output matches the conventions that model actually responds to.
+const TARGET_MODEL_DIRECTIVES = {
+  generic: '',
+  claude: `
+Target model: Claude (Anthropic).
+- Wrap each anatomy section in XML tags, e.g. <task>, <rules>, <success_brief>.
+- Put the task before the detail; Claude follows leading instructions most reliably.
+- Prefer explicit "think through X before answering" over "be thorough".
+- State the output format as a literal skeleton the model can fill in.`,
+  gpt: `
+Target model: GPT (OpenAI).
+- Open with a one-line role assignment, then the task.
+- Use markdown headings and numbered constraints instead of XML.
+- Name the output format explicitly, including whether it should be JSON or prose.
+- Keep instructions imperative and front-loaded; avoid nested conditionals.`,
+  gemini: `
+Target model: Gemini (Google).
+- Lead with the deliverable, then the constraints that shape it.
+- State the persona and audience in one sentence each.
+- Be explicit about length and structure; Gemini over-expands without a cap.
+- Spell out what to leave out, not just what to include.`,
+  reasoning: `
+Target model: a reasoning model (o-series, DeepSeek-R1, Claude with extended thinking).
+- Do NOT instruct step-by-step thinking; these models already reason internally.
+- Give the goal, the constraints, and the success criteria, then get out of the way.
+- Emphasize what a correct answer must satisfy over how to get there.
+- Keep the prompt shorter than usual; over-specification degrades these models.`,
+  image: `
+Target model: an image generator (Midjourney, DALL-E, Stable Diffusion).
+- Rewrite the prompt as a dense visual description, not an instruction to an assistant.
+- Order it: subject, action, setting, composition, lighting, style, medium, mood.
+- Use concrete visual nouns and adjectives; drop conversational scaffolding entirely.
+- Include what to avoid as a short negative list at the end.
+- Ignore anatomy sections that have no visual meaning.`,
+}
+
+function buildSystemPrompt(targetModel) {
+  const directive = TARGET_MODEL_DIRECTIVES[targetModel]
+
+  return directive ? `${SYSTEM_PROMPT}\n${directive}\n` : SYSTEM_PROMPT
+}
+
+function normalizeTargetModel(targetModel) {
+  return typeof targetModel === 'string' && targetModel in TARGET_MODEL_DIRECTIVES
+    ? targetModel
+    : 'generic'
+}
 
 function tagValues(value) {
   const values = Array.isArray(value) ? value : [value]
@@ -530,8 +581,9 @@ function buildGroqError(response, data, responseText) {
   })
 }
 
-async function refinePrompt({ tags, activeFields, freeText, model }) {
+async function refinePrompt({ tags, activeFields, freeText, model, targetModel }) {
   const apiKey = process.env.GROQ_API_KEY
+  const target = normalizeTargetModel(targetModel)
 
   if (!apiKey) {
     throw new AppError(500, 'Backend API key missing', 'The backend is missing GROQ_API_KEY.', {
@@ -567,7 +619,7 @@ async function refinePrompt({ tags, activeFields, freeText, model }) {
         temperature: 0.35,
         response_format: { type: 'json_object' },
         messages: [
-          { role: 'system', content: SYSTEM_PROMPT },
+          { role: 'system', content: buildSystemPrompt(target) },
           {
             role: 'user',
             content: buildUserPrompt({
@@ -688,6 +740,7 @@ const server = http.createServer(async (req, res) => {
       activeFields: body.activeFields || [],
       freeText: body.freeText || '',
       model: body.model || DEFAULT_MODEL,
+      targetModel: body.targetModel,
     })
     logBackendEvent('refine_success', {
       requestId: req.requestId,

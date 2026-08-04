@@ -184,8 +184,9 @@ export async function refinePromptWithGroq({
   activeFields = Object.keys(tags || {}),
   freeText,
   model = 'llama-3.3-70b-versatile',
+  targetModel = 'generic',
 }) {
-  const body = JSON.stringify({ tags, activeFields, freeText, model })
+  const body = JSON.stringify({ tags, activeFields, freeText, model, targetModel })
   let lastResponse
   let lastPayload
 

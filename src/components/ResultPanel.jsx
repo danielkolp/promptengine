@@ -1,20 +1,20 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   AlertTriangle,
   BookOpen,
   Check,
   Clipboard,
   ClipboardList,
+  CornerDownLeft,
   Files,
   Layers3,
   ListChecks,
   MessageSquareText,
   Route,
+  RotateCcw,
   Scale,
   ShieldCheck,
-  Sparkles,
-  WandSparkles,
-  Zap,
+  Undo2,
 } from 'lucide-react'
 import { TAG_CONFIG } from '../utils/promptTemplates'
 
@@ -30,9 +30,9 @@ const breakdownIcons = {
 }
 
 const variantItems = [
-  { key: 'more_concise', label: 'More concise' },
-  { key: 'more_detailed', label: 'More detailed' },
-  { key: 'more_creative', label: 'More creative' },
+  { key: 'more_concise', label: 'Concise' },
+  { key: 'more_detailed', label: 'Detailed' },
+  { key: 'more_creative', label: 'Creative' },
 ]
 
 function normalizeError(error) {
@@ -81,8 +81,31 @@ function getBreakdownItems(breakdown = {}) {
   }))
 }
 
-export default function ResultPanel({ result, loading }) {
+function countWords(text) {
+  return text.trim() ? text.trim().split(/\s+/).length : 0
+}
+
+export default function ResultPanel({ result, loading, onReuse }) {
+  const [draft, setDraft] = useState('')
   const [copied, setCopied] = useState(false)
+  const draftRef = useRef(null)
+
+  const source = result?.refined_prompt ?? ''
+  const [lastSource, setLastSource] = useState(source)
+
+  // A new refine replaces the draft; edits only survive within one result.
+  // Adjusting during render rather than in an effect avoids a second pass.
+  if (source !== lastSource) {
+    setLastSource(source)
+    setDraft(source)
+  }
+
+  useEffect(() => {
+    if (!draftRef.current) return
+
+    draftRef.current.style.height = 'auto'
+    draftRef.current.style.height = `${draftRef.current.scrollHeight}px`
+  }, [draft])
 
   const copy = async (text) => {
     try {
@@ -96,15 +119,15 @@ export default function ResultPanel({ result, loading }) {
 
   if (loading) {
     return (
-      <div className="glass-panel animate-panel-in rounded-3xl p-5 sm:p-6">
-        <div className="flex items-center gap-3 text-slate-300">
-          <Zap className="h-5 w-5 text-violet-300" />
-          <span className="text-sm font-semibold">Refining prompt</span>
+      <div className="brut-panel animate-panel-in p-5 sm:p-6">
+        <div className="flex items-center gap-3">
+          <span className="display text-sm text-[var(--volt)]">Refining</span>
+          <span className="animate-blink font-bold text-[var(--volt)]">█</span>
         </div>
-        <div className="mt-5 space-y-3">
-          <div className="h-4 w-3/4 animate-pulse rounded-full bg-white/10" />
-          <div className="h-4 w-full animate-pulse rounded-full bg-white/10" />
-          <div className="h-4 w-2/3 animate-pulse rounded-full bg-white/10" />
+        <div className="mt-5 space-y-2.5">
+          <div className="h-4 w-3/4 bg-white/12" />
+          <div className="h-4 w-full bg-white/12" />
+          <div className="h-4 w-2/3 bg-white/12" />
         </div>
       </div>
     )
@@ -116,28 +139,28 @@ export default function ResultPanel({ result, loading }) {
     const error = normalizeError(result.error)
 
     return (
-      <div className="glass-panel animate-panel-in rounded-3xl border-red-400/30 bg-red-950/30 p-5 text-sm text-red-100 sm:p-6">
+      <div className="brut-panel animate-panel-in border-[var(--alarm)] p-5 text-sm sm:p-6">
         <div className="flex items-start gap-3">
-          <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-red-400/15 text-red-200">
-            <AlertTriangle className="h-5 w-5" />
+          <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center border-2 border-[#0a0a0a] bg-[var(--alarm)] text-[#0a0a0a]">
+            <AlertTriangle className="h-5 w-5" strokeWidth={2.5} />
           </span>
-          <div className="min-w-0">
-            <h2 className="text-base font-semibold text-white">{error.title}</h2>
-            <p className="mt-1 leading-6">{error.message}</p>
+          <div className="min-w-0 flex-1">
+            <h2 className="display text-lg text-[var(--alarm)]">{error.title}</h2>
+            <p className="mt-1.5 leading-6 text-white">{error.message}</p>
             {error.details && (
-              <p className="mt-3 whitespace-pre-wrap rounded-2xl border border-red-300/15 bg-black/20 p-3 leading-6 text-red-50/90">
+              <p className="brut-slab mt-3 whitespace-pre-wrap p-3 text-xs leading-6 text-[var(--ink-mute)]">
                 {error.details}
               </p>
             )}
             {(error.status || error.code) && (
-              <div className="mt-3 flex flex-wrap gap-2 text-xs text-red-100/80">
+              <div className="mt-3 flex flex-wrap gap-2 text-[0.7rem] font-bold uppercase tracking-[0.08em]">
                 {error.status && (
-                  <span className="rounded-full border border-red-300/15 bg-red-400/10 px-2.5 py-1">
+                  <span className="border-2 border-[var(--alarm)] px-2 py-1 text-[var(--alarm)]">
                     HTTP {error.status}
                   </span>
                 )}
                 {error.code && (
-                  <span className="rounded-full border border-red-300/15 bg-red-400/10 px-2.5 py-1">
+                  <span className="border-2 border-[var(--alarm)] px-2 py-1 text-[var(--alarm)]">
                     {error.code}
                   </span>
                 )}
@@ -149,83 +172,133 @@ export default function ResultPanel({ result, loading }) {
     )
   }
 
-  const { refined_prompt, breakdown, variants, why_this_works } = result
+  const { breakdown, variants, why_this_works } = result
   const breakdownItems = getBreakdownItems(breakdown)
+  const edited = draft !== source
 
   return (
-    <div className="glass-panel animate-panel-in rounded-3xl p-5 sm:p-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="brut-panel animate-panel-in p-4 sm:p-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
-          <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-violet-400/15 text-violet-200">
-            <Sparkles className="h-5 w-5" />
-          </span>
-          <div>
-            <h2 className="text-lg font-semibold text-white">Refined Prompt</h2>
-            <p className="text-sm text-slate-500">Ready to copy or adapt.</p>
-          </div>
+          <h2 className="display text-xl text-white sm:text-2xl">Refined prompt</h2>
+          {edited && (
+            <span className="border-2 border-[var(--volt)] px-2 py-1 text-[0.62rem] font-bold uppercase tracking-[0.12em] text-[var(--volt)]">
+              Edited
+            </span>
+          )}
         </div>
 
-        <button
-          type="button"
-          onClick={() => copy(refined_prompt)}
-          className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.055] px-4 py-2.5 text-sm font-semibold text-slate-200 transition hover:border-violet-300/30 hover:bg-white/[0.09] hover:text-white"
-        >
-          {copied ? <Check className="h-4 w-4 text-emerald-300" /> : <Clipboard className="h-4 w-4" />}
-          {copied ? 'Copied' : 'Copy'}
-        </button>
-      </div>
-
-      <div className="mt-5 rounded-2xl border border-white/10 bg-black/20 p-4 text-sm leading-7 text-slate-100 sm:p-5">
-        <p className="whitespace-pre-wrap">{refined_prompt}</p>
-      </div>
-
-      <section className="mt-6">
-        <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-white">
-          <Layers3 className="h-4 w-4 text-sky-300" />
-          Breakdown
+        <div className="flex flex-wrap gap-2">
+          {edited && (
+            <button
+              type="button"
+              onClick={() => setDraft(source)}
+              className="btn-ghost brut-press inline-flex items-center gap-2 px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em]"
+            >
+              <Undo2 className="h-4 w-4" strokeWidth={2.5} />
+              Revert
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => onReuse(draft)}
+            className="btn-ghost brut-press inline-flex items-center gap-2 px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em]"
+          >
+            <RotateCcw className="h-4 w-4" strokeWidth={2.5} />
+            Refine again
+          </button>
+          <button
+            type="button"
+            onClick={() => copy(draft)}
+            className="btn-volt brut-press inline-flex items-center gap-2 px-4 py-2 text-xs"
+          >
+            {copied ? <Check className="h-4 w-4" strokeWidth={3} /> : <Clipboard className="h-4 w-4" strokeWidth={2.5} />}
+            {copied ? 'Copied' : 'Copy'}
+          </button>
         </div>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      </div>
+
+      <div className="brut-slab mt-4 focus-within:border-[var(--volt)]">
+        <textarea
+          ref={draftRef}
+          value={draft}
+          onChange={(event) => setDraft(event.target.value)}
+          aria-label="Refined prompt, editable"
+          spellCheck="false"
+          className="block min-h-[8rem] w-full resize-none overflow-hidden bg-transparent p-4 text-sm leading-7 text-white focus:outline-none sm:p-5"
+        />
+      </div>
+
+      <div className="mt-2 flex items-center justify-between text-[0.7rem] text-[var(--ink-faint)]">
+        <span>Editable — changes are copied and reused as written</span>
+        <span>{countWords(draft)} words</span>
+      </div>
+
+      <section className="mt-7">
+        <div className="eyebrow mb-3 text-white">Breakdown</div>
+        <div className="stack">
           {breakdownItems.map(({ key, label, Icon, tagClass }) => (
-            <div key={key} className={`${tagClass} rounded-2xl border border-white/10 bg-white/[0.03] p-4`}>
-              <div className="mb-3 flex items-center gap-2">
-                <Icon className="tag-label h-4 w-4" />
-                <span className="tag-label text-sm font-semibold">{label}</span>
+            <div key={key} className={`${tagClass} stack-bar`}>
+              <div className="stack-bar__key" aria-hidden="true" />
+              <div className="min-w-0 px-4 py-3">
+                <div className="flex items-center gap-2">
+                  <Icon className="tag-label h-3.5 w-3.5 shrink-0" strokeWidth={2.5} />
+                  <span className="tag-label text-[0.68rem] font-bold uppercase tracking-[0.12em]">
+                    {label}
+                  </span>
+                </div>
+                <p className="mt-1.5 text-sm leading-6 text-[var(--ink-mute)]">
+                  {breakdown[key] || 'Not specified'}
+                </p>
               </div>
-              <p className="text-sm leading-6 text-slate-300">{breakdown[key] || 'Not specified'}</p>
             </div>
           ))}
         </div>
       </section>
 
-      <section className="mt-6">
-        <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-white">
-          <WandSparkles className="h-4 w-4 text-violet-300" />
-          Variants
-        </div>
+      <section className="mt-7">
+        <div className="eyebrow mb-3 text-white">Variants</div>
         <div className="grid gap-3 lg:grid-cols-3">
-          {variantItems.map(({ key, label }) => (
-            <div key={key} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-              <h3 className="text-sm font-semibold text-white">{label}</h3>
-              <p className="mt-3 text-sm leading-6 text-slate-300">{variants[key]}</p>
-            </div>
-          ))}
+          {variantItems.map(({ key, label }) => {
+            const text = variants[key]
+            if (!text) return null
+
+            return (
+              <div key={key} className="brut-slab flex flex-col p-4">
+                <div className="flex items-center justify-between gap-2">
+                  <h3 className="display text-sm text-white">{label}</h3>
+                  <span className="text-[0.68rem] text-[var(--ink-faint)]">
+                    {countWords(text)}w
+                  </span>
+                </div>
+                <p className="mt-3 flex-1 text-sm leading-6 text-[var(--ink-mute)]">{text}</p>
+                <button
+                  type="button"
+                  onClick={() => setDraft(text)}
+                  className="btn-ghost brut-press mt-4 inline-flex items-center justify-center gap-2 px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em]"
+                >
+                  <CornerDownLeft className="h-4 w-4" strokeWidth={2.5} />
+                  Use this
+                </button>
+              </div>
+            )
+          })}
         </div>
       </section>
 
-      <section className="mt-6 rounded-2xl border border-white/10 bg-black/15 p-4">
-        <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-white">
-          <Check className="h-4 w-4 text-emerald-300" />
-          Why This Works
-        </div>
-        <ul className="space-y-2 text-sm leading-6 text-slate-300">
-          {why_this_works.map((item) => (
-            <li key={item} className="flex gap-2">
-              <Check className="mt-1 h-4 w-4 shrink-0 text-emerald-300" />
-              <span>{item}</span>
-            </li>
-          ))}
-        </ul>
-      </section>
+      {why_this_works.length > 0 && (
+        <section className="brut-slab mt-7 p-4">
+          <div className="eyebrow mb-3 text-white">Why this works</div>
+          <ul className="space-y-2 text-sm leading-6 text-[var(--ink-mute)]">
+            {why_this_works.map((item) => (
+              <li key={item} className="flex gap-2.5">
+                <Check className="mt-1 h-4 w-4 shrink-0 text-[var(--volt)]" strokeWidth={3} />
+                <span>{item}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
     </div>
   )
 }

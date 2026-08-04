@@ -1,11 +1,42 @@
-@import url("https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Archivo+Black&family=Fira+Code:wght@400;500;600;700&display=swap");
 @import "tailwindcss";
+
+/*
+  Prompt Engine — neo-brutalist, dark canvas.
+
+  Two rules hold the system together:
+  1. Nothing is soft. No blur, no gradient fills, no shadow that isn't a hard
+     offset. Depth comes from displacement, never from diffusion.
+  2. Shadow strength encodes interactivity. Static panels get a dim ghost
+     shadow; anything you can click carries a full-strength shadow in its own
+     color and physically presses down when you use it.
+
+  Everything below lives in @layer base/components on purpose. Tailwind v4
+  declares `@layer theme, base, components, utilities`, and unlayered rules
+  outrank every one of those — so an unlayered `.brut-panel { border }` would
+  quietly beat a `border-[var(--alarm)]` utility at the call site.
+*/
 
 :root {
   color-scheme: dark;
-  font-family:
+
+  --void: #0b0c12;
+  --slab: #14151f;
+  --slab-deep: #0e0f17;
+  --ink: #ffffff;
+  --ink-mute: #8b90a6;
+  --ink-faint: #5b6076;
+  --volt: #ffe500;
+  --alarm: #ff4d4d;
+  --border-w: 2px;
+
+  --display:
+    "Archivo Black", "Arial Black", "Helvetica Neue", Impact, sans-serif;
+  --mono:
     "Fira Code", "Cascadia Code", "JetBrains Mono", "SFMono-Regular", Consolas,
     "Liberation Mono", ui-monospace, monospace;
+
+  font-family: var(--mono);
   font-synthesis: none;
   font-variant-ligatures: contextual;
   text-rendering: optimizeLegibility;
@@ -13,242 +44,576 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
-body {
-  margin: 0;
-  min-width: 320px;
-  min-height: 100svh;
-  background:
-    radial-gradient(circle at 18% 10%, rgba(126, 87, 255, 0.2), transparent 24rem),
-    radial-gradient(circle at 78% 6%, rgba(34, 197, 94, 0.11), transparent 20rem),
-    linear-gradient(180deg, #0b0c12 0%, #08090d 45%, #0a0b10 100%);
+@layer base {
+  body {
+    margin: 0;
+    min-width: 320px;
+    min-height: 100svh;
+    background: var(--void);
+    color: var(--ink);
+  }
+
+  #root {
+    min-height: 100svh;
+  }
+
+  button,
+  input,
+  textarea,
+  select {
+    font: inherit;
+  }
+
+  * {
+    font-family: inherit;
+  }
+
+  button {
+    cursor: pointer;
+  }
+
+  button:disabled {
+    cursor: not-allowed;
+  }
+
+  ::selection {
+    background: var(--volt);
+    color: #0a0a0a;
+  }
+
+  :focus-visible {
+    outline: 3px solid var(--volt);
+    outline-offset: 2px;
+  }
 }
 
-#root {
-  min-height: 100svh;
+@layer components {
+  /* ---------- Type ---------- */
+
+  .display {
+    font-family: var(--display);
+    font-weight: 400;
+    letter-spacing: -0.02em;
+    text-transform: uppercase;
+    line-height: 0.95;
+  }
+
+  .eyebrow {
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+
+  /* ---------- Surfaces ---------- */
+
+  /* Printed grid. Hard 1px lines, no mask fade — brutalism doesn't fade out. */
+  .app-grid {
+    background-image:
+      linear-gradient(rgba(255, 255, 255, 0.045) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.045) 1px, transparent 1px);
+    background-size: 64px 64px;
+  }
+
+  .brut-panel {
+    background: var(--slab);
+    border: var(--border-w) solid var(--ink);
+    box-shadow: 6px 6px 0 rgba(255, 255, 255, 0.14);
+  }
+
+  .brut-slab {
+    background: var(--slab-deep);
+    border: var(--border-w) solid rgba(255, 255, 255, 0.22);
+  }
+
+  .brut-divider {
+    border-top: var(--border-w) solid rgba(255, 255, 255, 0.16);
+  }
+
+  /* ---------- Press physics ---------- */
+
+  /*
+    Interactive elements sit on a hard offset and travel into it when used, so
+    a click reads as a physical press rather than a color change.
+  */
+  .brut-press {
+    box-shadow: 4px 4px 0 var(--press-color, var(--ink));
+    transition:
+      transform 70ms cubic-bezier(0.2, 0, 0, 1),
+      box-shadow 70ms cubic-bezier(0.2, 0, 0, 1),
+      background-color 70ms linear;
+  }
+
+  .brut-press:hover:not(:disabled) {
+    transform: translate(-1px, -1px);
+    box-shadow: 5px 5px 0 var(--press-color, var(--ink));
+  }
+
+  .brut-press:active:not(:disabled) {
+    transform: translate(4px, 4px);
+    box-shadow: 0 0 0 var(--press-color, var(--ink));
+  }
+
+  .brut-press:disabled {
+    box-shadow: 2px 2px 0 rgba(255, 255, 255, 0.2);
+    opacity: 0.5;
+  }
+
+  .btn-volt {
+    background: var(--volt);
+    border: var(--border-w) solid var(--ink);
+    color: #0a0a0a;
+    font-family: var(--display);
+    text-transform: uppercase;
+    letter-spacing: 0.01em;
+    --press-color: #ffffff;
+  }
+
+  .btn-volt:hover:not(:disabled) {
+    background: #fff06b;
+  }
+
+  .btn-ghost {
+    background: var(--slab-deep);
+    border: var(--border-w) solid var(--ink);
+    color: var(--ink);
+    --press-color: rgba(255, 255, 255, 0.45);
+  }
+
+  .btn-ghost:hover:not(:disabled) {
+    background: #1d1f2c;
+  }
+
+  .btn-alarm:hover:not(:disabled) {
+    background: var(--alarm);
+    color: #0a0a0a;
+    border-color: var(--alarm);
+  }
+
+  /* ---------- Tag identity ---------- */
+
+  /*
+    Eight fully saturated hues, one per anatomy field. They carry black text on
+    solid fills — the loudest thing in the interface, because the tags are what
+    the user is actually manipulating.
+  */
+  .tag-task { --tag: #ff4d4d; }
+  .tag-context_files { --tag: #4cc9ff; }
+  .tag-reference { --tag: #3ddc84; }
+  .tag-success_brief { --tag: #ffc93c; }
+  .tag-rules { --tag: #ff6ec7; }
+  .tag-conversation { --tag: #b36bff; }
+  .tag-plan { --tag: #ff8a3d; }
+  .tag-alignment { --tag: #00d9c0; }
+  .tag-neutral { --tag: #c3c8d8; }
+
+  /* A shaded face of each tag color, used as the extruded side of a block. */
+  .tag-shell,
+  .tag-chip,
+  .stack-bar {
+    --tag-deep: color-mix(in srgb, var(--tag, #fff) 42%, #000);
+  }
+
+  /*
+    Tag tiles are bricks, not cards. The offset is a solid shaded face rather
+    than a floating shadow, so each tile reads as a block with mass — and the
+    depth animates through a build sequence:
+
+      hover        lifted, ready to place   (8px)
+      resting      sitting in the wall      (6px)
+      focus-within seated, mortar set       (3px)
+
+    They deliberately never translate on hover: a transform here would create a
+    stacking context and trap each tile's own tooltip behind the next tile.
+  */
+  .tag-shell {
+    position: relative;
+    background: var(--slab);
+    border-color: var(--tag, var(--ink));
+    box-shadow: 6px 6px 0 var(--tag-deep);
+    transition: box-shadow 90ms linear;
+  }
+
+  .tag-shell:hover {
+    box-shadow: 8px 8px 0 var(--tag-deep);
+  }
+
+  .tag-shell:focus-within {
+    box-shadow: 3px 3px 0 var(--tag-deep);
+  }
+
+  /*
+    Connector studs on the top edge. One element plus two hard box-shadow
+    copies — they sit in the grid gutter so a tile's studs meet the underside
+    of the tile above it, and the column reads as a stacked course.
+  */
+  .tag-shell::before {
+    content: "";
+    position: absolute;
+    top: -0.5rem;
+    left: 0.85rem;
+    width: 0.7rem;
+    height: 0.5rem;
+    background: var(--tag, var(--ink));
+    box-shadow:
+      1.3rem 0 0 var(--tag, var(--ink)),
+      2.6rem 0 0 var(--tag, var(--ink));
+  }
+
+  /* Solid color block with black text — the brutalist chip. */
+  .tag-chip {
+    background: var(--tag, var(--ink));
+    color: #0a0a0a;
+    border: var(--border-w) solid #0a0a0a;
+    font-weight: 700;
+  }
+
+  .tag-label {
+    color: var(--tag, var(--ink));
+  }
+
+  /* ---------- The manifold ---------- */
+
+  /*
+    Plumbing threaded along the underside of the tag blocks and down into the
+    prompt box. Drawn over the tiles rather than behind them, so the slug stays
+    visible for the whole run — it rides the tiles' bottom borders, where it
+    covers structure instead of content.
+  */
+  .pipe-layer {
+    position: absolute;
+    inset: 0;
+    z-index: 4;
+    overflow: visible;
+    pointer-events: none;
+  }
+
+  .pipe-casing {
+    fill: none;
+    stroke: #0a0a0a;
+    stroke-width: 9;
+    stroke-linejoin: miter;
+    stroke-linecap: square;
+  }
+
+  .pipe-bore {
+    fill: none;
+    stroke: #454b63;
+    stroke-width: 3;
+    stroke-linejoin: miter;
+    stroke-linecap: square;
+  }
+
+  /*
+    Joinery. The flange carries the brick's own color so the connection reads
+    as plumbed into that specific block, and it is drawn over the run so the
+    pipe disappears into the coupling instead of passing behind it.
+  */
+  .pipe-flange {
+    stroke: #0a0a0a;
+    stroke-width: 2;
+  }
+
+  .pipe-bolt {
+    fill: #0a0a0a;
+  }
+
+  .pipe-joint {
+    fill: #0a0a0a;
+  }
+
+  .pipe-joint-core {
+    fill: #454b63;
+  }
+
+  /* Sealed head of the run. */
+  .pipe-cap {
+    fill: #0a0a0a;
+    stroke: #454b63;
+    stroke-width: 2;
+  }
+
+  .pipe-cap-core {
+    fill: #454b63;
+  }
+
+  /*
+    The travelling swell. Same path as the run, drawn heavier and clipped to a
+    short dash — shoulder first, then the peak on top, then the bright core
+    showing what is being pushed through. Round caps taper the ends.
+  */
+  .pipe-swell {
+    transition: opacity 160ms linear;
+  }
+
+  .pipe-swell-shoulder,
+  .pipe-swell-peak,
+  .pipe-swell-core {
+    fill: none;
+    stroke-linecap: round;
+    /* Round the bends so fluid flows through a corner instead of spiking. */
+    stroke-linejoin: round;
+  }
+
+  .pipe-swell-shoulder {
+    stroke: #0a0a0a;
+    stroke-width: 14;
+  }
+
+  .pipe-swell-peak {
+    stroke: #0a0a0a;
+    stroke-width: 20;
+  }
+
+  .pipe-swell-core {
+    stroke: var(--volt);
+    stroke-width: 8;
+  }
+
+  /* The inlet takes the charge when the slug lands. */
+  .pipe-inlet.pipe-arrived {
+    animation: pipe-arrived 500ms cubic-bezier(0.2, 0, 0, 1);
+  }
+
+  /* ---------- Signature: the stack ---------- */
+
+  /*
+    The logo is three stacked bars cut by a vertical slot. The result breakdown
+    rebuilds that mark at full width — each field becomes one bar in the stack,
+    and the slot runs straight through the column.
+  */
+  .stack {
+    position: relative;
+  }
+
+  .stack::before {
+    content: "";
+    position: absolute;
+    top: -0.35rem;
+    bottom: -0.35rem;
+    left: 2.25rem;
+    width: var(--border-w);
+    background: var(--ink);
+    opacity: 0.9;
+    z-index: 2;
+  }
+
+  .stack-bar {
+    position: relative;
+    display: grid;
+    grid-template-columns: 4.5rem 1fr;
+    align-items: stretch;
+    border: var(--border-w) solid var(--ink);
+    background: var(--slab-deep);
+  }
+
+  .stack-bar + .stack-bar {
+    margin-top: -2px;
+  }
+
+  .stack-bar__key {
+    background: var(--tag, var(--ink));
+  }
+
+  /* ---------- Logo ---------- */
+
+  .logo-lockup {
+    position: relative;
+    width: clamp(11rem, 12vw, 14rem);
+    aspect-ratio: 753 / 320;
+    overflow: hidden;
+  }
+
+  .logo-lockup img {
+    position: absolute;
+    left: -14.87%;
+    top: -113.13%;
+    width: 135.99%;
+    max-width: none;
+    height: auto;
+  }
+
+  .footer-link {
+    color: var(--ink);
+    text-decoration: underline;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 4px;
+    transition: color 90ms linear;
+  }
+
+  .footer-link:hover {
+    color: var(--volt);
+  }
+
+  /* ---------- Tutorial ---------- */
+
+  /*
+    Four shades fenced around the highlighted control instead of one sheet
+    with a cut-out. The gap between them is a real gap, so the control the
+    tour is talking about stays clickable while it is talking about it.
+  */
+  .tour-shade {
+    position: fixed;
+    z-index: 60;
+    background: rgba(6, 7, 12, 0.84);
+  }
+
+  .tour-ring {
+    position: fixed;
+    z-index: 61;
+    border: 3px solid var(--volt);
+    pointer-events: none;
+    transition: opacity 120ms linear;
+  }
+
+  .tour-card {
+    position: fixed;
+    z-index: 62;
+    max-width: calc(100vw - 1.5rem);
+  }
+
+  /* ---------- Tooltips ---------- */
+
+  .tooltip-anchor {
+    position: relative;
+    overflow: visible;
+  }
+
+  /*
+    The tooltip's own z-index is scoped to whatever stacking context its anchor
+    sits in — and `.brut-press:hover` applies a transform, which creates one.
+    Lifting the anchor itself is what actually clears later siblings (the tag
+    tiles below), so raise it for the whole time a tooltip can be showing.
+  */
+  .tooltip-anchor:hover,
+  .tooltip-anchor:focus-visible,
+  .tooltip-anchor:focus-within {
+    z-index: 90;
+  }
+
+  .custom-tooltip {
+    position: absolute;
+    bottom: calc(100% + 0.65rem);
+    left: 50%;
+    z-index: 80;
+    width: max-content;
+    max-width: min(19rem, calc(100vw - 2rem));
+    padding: 0.6rem 0.7rem;
+    border: var(--border-w) solid var(--ink);
+    border-radius: 0;
+    background: #0a0a0a;
+    box-shadow: 4px 4px 0 var(--volt);
+    color: var(--ink);
+    font-size: 0.72rem;
+    font-weight: 500;
+    letter-spacing: 0;
+    line-height: 1.45;
+    opacity: 0;
+    pointer-events: none;
+    text-align: left;
+    text-transform: none;
+    transform: translateX(-50%);
+    transition:
+      opacity 90ms linear,
+      visibility 90ms linear;
+    visibility: hidden;
+    white-space: normal;
+  }
+
+  .custom-tooltip--bottom {
+    top: calc(100% + 0.65rem);
+    bottom: auto;
+  }
+
+  .tooltip-anchor:hover .custom-tooltip,
+  .tooltip-anchor:focus-visible .custom-tooltip {
+    opacity: 1;
+    visibility: visible;
+  }
+
+  /* ---------- Motion ---------- */
+
+  .animate-dropdown-in {
+    animation: dropdown-in 110ms cubic-bezier(0.2, 0, 0, 1) both;
+  }
+
+  .animate-panel-in {
+    animation: panel-in 140ms cubic-bezier(0.2, 0, 0, 1) both;
+  }
+
+  .animate-modal-in {
+    animation: drawer-in 140ms cubic-bezier(0.2, 0, 0, 1) both;
+  }
+
+  .animate-blink {
+    animation: blink 900ms steps(1, end) infinite;
+  }
+
+  .scrollbar-brut {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+  }
 }
 
-button,
-input,
-textarea {
-  font: inherit;
+@media (max-width: 640px) {
+  .stack::before {
+    left: 1.5rem;
+  }
+
+  .stack-bar {
+    grid-template-columns: 3rem 1fr;
+  }
 }
 
-* {
-  font-family: inherit;
-}
-
-button {
-  cursor: pointer;
-}
-
-button:disabled {
-  cursor: not-allowed;
-}
-
-::selection {
-  background: rgba(167, 139, 250, 0.35);
-  color: #ffffff;
-}
-
-.app-grid {
-  background-image:
-    linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
-  background-size: 72px 72px;
-  mask-image: linear-gradient(to bottom, black 0%, transparent 70%);
-}
-
-.glass-panel {
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.035)),
-    rgba(11, 12, 18, 0.78);
-  border: 1px solid rgba(255, 255, 255, 0.11);
-  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.35);
-  backdrop-filter: blur(22px);
-}
-
-.soft-border {
-  border-color: rgba(255, 255, 255, 0.1);
-}
-
-.input-shadow {
-  box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.08),
-    0 18px 70px rgba(0, 0, 0, 0.34),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08);
-}
-
-.logo-lockup {
-  position: relative;
-  width: clamp(14rem, 14vw, 17rem);
-  aspect-ratio: 753 / 320;
-  overflow: hidden;
-}
-
-.logo-lockup img {
-  position: absolute;
-  left: -14.87%;
-  top: -113.13%;
-  width: 135.99%;
-  max-width: none;
-  height: auto;
-}
-
-.tag-task {
-  --tag-bg: rgba(248, 113, 113, 0.16);
-  --tag-text: #fca5a5;
-  --tag-border: rgba(248, 113, 113, 0.32);
-}
-
-.tag-context_files {
-  --tag-bg: rgba(56, 189, 248, 0.14);
-  --tag-text: #93c5fd;
-  --tag-border: rgba(96, 165, 250, 0.3);
-}
-
-.tag-reference {
-  --tag-bg: rgba(34, 197, 94, 0.14);
-  --tag-text: #86efac;
-  --tag-border: rgba(74, 222, 128, 0.3);
-}
-
-.tag-success_brief {
-  --tag-bg: rgba(245, 158, 11, 0.14);
-  --tag-text: #fcd34d;
-  --tag-border: rgba(251, 191, 36, 0.32);
-}
-
-.tag-rules {
-  --tag-bg: rgba(244, 114, 182, 0.13);
-  --tag-text: #f9a8d4;
-  --tag-border: rgba(244, 114, 182, 0.3);
-}
-
-.tag-conversation {
-  --tag-bg: rgba(168, 85, 247, 0.15);
-  --tag-text: #d8b4fe;
-  --tag-border: rgba(192, 132, 252, 0.31);
-}
-
-.tag-plan {
-  --tag-bg: rgba(251, 113, 133, 0.14);
-  --tag-text: #fda4af;
-  --tag-border: rgba(251, 113, 133, 0.3);
-}
-
-.tag-alignment {
-  --tag-bg: rgba(14, 165, 233, 0.14);
-  --tag-text: #7dd3fc;
-  --tag-border: rgba(56, 189, 248, 0.3);
-}
-
-.tag-neutral {
-  --tag-bg: rgba(148, 163, 184, 0.12);
-  --tag-text: #cbd5e1;
-  --tag-border: rgba(148, 163, 184, 0.24);
-}
-
-.tag-shell {
-  background: var(--tag-bg);
-  border-color: var(--tag-border);
-}
-
-.tag-label {
-  color: var(--tag-text);
-}
-
-.tooltip-anchor {
-  position: relative;
-  overflow: visible;
-}
-
-.custom-tooltip {
-  --tooltip-y: 0.25rem;
-  position: absolute;
-  bottom: calc(100% + 0.6rem);
-  left: 50%;
-  z-index: 80;
-  width: max-content;
-  max-width: min(19rem, calc(100vw - 2rem));
-  padding: 0.65rem 0.75rem;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 0.85rem;
-  background: rgba(12, 17, 29, 0.98);
-  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.42);
-  color: #e2e8f0;
-  font-size: 0.72rem;
-  font-weight: 500;
-  letter-spacing: 0;
-  line-height: 1.4;
-  opacity: 0;
-  pointer-events: none;
-  text-align: left;
-  text-transform: none;
-  transform: translate(-50%, var(--tooltip-y));
-  transition:
-    opacity 140ms ease,
-    transform 140ms ease,
-    visibility 140ms ease;
-  visibility: hidden;
-  white-space: normal;
-}
-
-.custom-tooltip--bottom {
-  --tooltip-y: -0.25rem;
-  top: calc(100% + 0.6rem);
-  bottom: auto;
-}
-
-.tooltip-anchor:hover .custom-tooltip,
-.tooltip-anchor:focus-visible .custom-tooltip {
-  --tooltip-y: 0;
-  opacity: 1;
-  visibility: visible;
-}
-
+/* Snapped, not eased. Brutalist motion arrives rather than glides. */
 @keyframes dropdown-in {
   from {
     opacity: 0;
-    transform: translateY(-10px) scale(0.985);
+    transform: translate(-4px, -6px);
   }
   to {
     opacity: 1;
-    transform: translateY(0) scale(1);
+    transform: translate(0, 0);
   }
 }
 
 @keyframes panel-in {
   from {
     opacity: 0;
-    transform: translateY(18px);
+    transform: translate(-6px, 8px);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: translate(0, 0);
   }
 }
 
-@keyframes modal-in {
+@keyframes drawer-in {
   from {
+    transform: translateX(16px);
     opacity: 0;
-    transform: translateX(22px);
   }
   to {
-    opacity: 1;
     transform: translateX(0);
+    opacity: 1;
   }
 }
 
-.animate-dropdown-in {
-  animation: dropdown-in 180ms ease-out both;
+@keyframes blink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0.15; }
 }
 
-.animate-panel-in {
-  animation: panel-in 260ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
-}
-
-.animate-modal-in {
-  animation: modal-in 220ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+@keyframes pipe-arrived {
+  0% {
+    border-color: var(--volt);
+    background-color: rgba(255, 229, 0, 0.22);
+  }
+  100% {
+    border-color: #ffffff;
+    background-color: var(--slab-deep);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -259,5 +624,10 @@ button:disabled {
     animation-iteration-count: 1 !important;
     scroll-behavior: auto !important;
     transition-duration: 0.01ms !important;
+  }
+
+  .brut-press:hover:not(:disabled),
+  .brut-press:active:not(:disabled) {
+    transform: none;
   }
 }
