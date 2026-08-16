@@ -167,8 +167,8 @@ export default function TourGuide({ open, onClose, api }) {
         role="dialog"
         aria-label={`Tutorial step ${index + 1} of ${TOUR_STEPS.length}`}
       >
-        <div className="flex items-center justify-between gap-3 border-b-2 border-white bg-[var(--volt)] px-3 py-2">
-          <span className="display text-xs text-[#0a0a0a]">
+        <div className="flex items-center justify-between gap-3 bg-[var(--volt)] px-3 py-2">
+          <span className="t-micro font-bold uppercase tracking-[0.14em] text-[#0a0a0a]">
             Step {index + 1} / {TOUR_STEPS.length}
           </span>
           <button
@@ -177,38 +177,44 @@ export default function TourGuide({ open, onClose, api }) {
             aria-label="End tutorial"
             className="inline-flex h-6 w-6 items-center justify-center border-2 border-[#0a0a0a] text-[#0a0a0a] transition hover:bg-[#0a0a0a] hover:text-[var(--volt)]"
           >
-            <X className="h-3.5 w-3.5" strokeWidth={3} />
+            <X className="h-3.5 w-3.5" strokeWidth={2.75} />
           </button>
         </div>
 
-        <div className="p-4" aria-live="polite">
-          <h2 className="display text-lg text-white">{step.title}</h2>
-          <p className="mt-2 text-sm leading-6 text-[var(--ink-mute)]">{step.body}</p>
+        <div className="p-5" aria-live="polite">
+          <h2 className="title-sm text-[var(--ink)]">{step.title}</h2>
+          <p className="t-small mt-2.5 leading-7 text-[var(--ink-mute)]">{step.body}</p>
 
-          <div className="mt-4 flex items-center gap-1" aria-hidden="true">
+          {/*
+            Progress in ink, not volt. The card already carries a volt header
+            and a volt Next button, and the volt ring outside is pointing at the
+            control being described — a fourth run of it on the one element
+            nobody has to act on is where the accent stops meaning anything.
+          */}
+          <div className="mt-5 flex items-center gap-1" aria-hidden="true">
             {TOUR_STEPS.map((item, i) => (
               <span
                 key={item.id}
-                className={`h-1.5 flex-1 border border-white ${i <= index ? 'bg-[var(--volt)]' : 'bg-transparent'}`}
+                className={`h-1.5 flex-1 ${i <= index ? 'bg-[var(--ink-mute)]' : 'bg-[var(--edge-soft)]'}`}
               />
             ))}
           </div>
 
-          <div className="mt-4 flex items-center justify-between gap-2">
+          <div className="mt-5 flex items-center justify-between gap-2">
             <button
               type="button"
               onClick={() => goTo(index - 1)}
               disabled={index === 0}
-              className="btn-ghost brut-press inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em]"
+              className="btn-ghost brut-press t-small inline-flex items-center gap-1.5 px-3 py-2"
             >
-              <ArrowLeft className="h-3.5 w-3.5" strokeWidth={2.5} />
+              <ArrowLeft className="h-3.5 w-3.5" strokeWidth={2.25} />
               Back
             </button>
 
             <button
               type="button"
               onClick={() => (isLast ? finish() : goTo(index + 1))}
-              className="btn-volt brut-press inline-flex items-center gap-1.5 px-4 py-2 text-xs"
+              className="btn-volt brut-press t-small inline-flex items-center gap-1.5 px-4 py-2"
             >
               {isLast ? 'Done' : 'Next'}
               {isLast ? (

@@ -57,8 +57,6 @@ export function createDefaultTags() {
   return Object.keys(TAG_CONFIG).map((key) => createTag(key))
 }
 
-export const DEFAULT_TAGS = createDefaultTags()
-
 export const SUGGESTIONS = {
   task: ['write', 'build', 'analyze', 'revise', 'plan', 'debug'],
   context_files: ['README.md - requirements', 'brief.md - scope', 'notes.md - constraints'],

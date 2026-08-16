@@ -1,15 +1,22 @@
-@import url("https://fonts.googleapis.com/css2?family=Archivo+Black&family=Fira+Code:wght@400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Archivo+Black&family=Archivo:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap");
 @import "tailwindcss";
 
 /*
   Prompt Engine — neo-brutalist, dark canvas.
 
-  Two rules hold the system together:
+  Four rules hold the system together:
   1. Nothing is soft. No blur, no gradient fills, no shadow that isn't a hard
      offset. Depth comes from displacement, never from diffusion.
-  2. Shadow strength encodes interactivity. Static panels get a dim ghost
-     shadow; anything you can click carries a full-strength shadow in its own
-     color and physically presses down when you use it.
+  2. Brightness encodes interactivity. Structure gets a dim edge and no
+     shadow; anything you can click gets a bright edge, a hard offset, and
+     physically presses down when you use it.
+  3. One loud thing. Volt is the only fully saturated colour in the palette,
+     so everything else stays in a narrow brightness band and lets it carry.
+  4. Colour marks, it never fills. The eight field hues are an index — they
+     appear as a keyline, a label, or a small key block, never as a surface.
+     The form you type into is neutral; the anatomy the refiner returns is the
+     one place the full set is spent. Eight saturated bars in the input grid is
+     what buried the refine button, and eight loud things is no loud things.
 
   Everything below lives in @layer base/components on purpose. Tailwind v4
   declares `@layer theme, base, components, utilities`, and unlayered rules
@@ -20,23 +27,53 @@
 :root {
   color-scheme: dark;
 
+  /* ---- Canvas ---- */
   --void: #0b0c12;
-  --slab: #14151f;
-  --slab-deep: #0e0f17;
-  --ink: #ffffff;
-  --ink-mute: #8b90a6;
-  --ink-faint: #5b6076;
+  --slab: #15161f;
+  --slab-deep: #101119;
+
+  /* ---- Ink ---- */
+  --ink: #f0f1f7;
+  --ink-mute: #969bb0;
+  --ink-faint: #767b92;
+
+  /*
+    Edge scale. Pure white on every border is what made the old build glare —
+    each line competed with the content it was framing. Three steps instead,
+    so a border's brightness tells you whether the thing is structure or a
+    control before you read the label.
+  */
+  --edge-strong: rgba(240, 241, 247, 0.8);
+  --edge: rgba(240, 241, 247, 0.26);
+  --edge-soft: rgba(240, 241, 247, 0.13);
+
   --volt: #ffe500;
-  --alarm: #ff4d4d;
+  --alarm: #ff6b6b;
   --border-w: 2px;
 
+  /* ---- Type ---- */
   --display:
     "Archivo Black", "Arial Black", "Helvetica Neue", Impact, sans-serif;
+  --sans:
+    Archivo, "Helvetica Neue", -apple-system, BlinkMacSystemFont, Segoe UI,
+    sans-serif;
   --mono:
     "Fira Code", "Cascadia Code", "JetBrains Mono", "SFMono-Regular", Consolas,
     "Liberation Mono", ui-monospace, monospace;
 
-  font-family: var(--mono);
+  /*
+    Three sizes for chrome, and that's it — spent through .t-micro / .t-small /
+    .t-body rather than retyped as an arbitrary value at each call site. The
+    scale was declared here before but never actually referenced, so six sizes
+    had drifted into the markup (0.6875 / 0.75 / 0.8125 / 0.875 / 0.9375 /
+    1.0625). Headings don't draw from this scale; .display and .title-sm carry
+    their own size so a heading is never sized at the call site either.
+  */
+  --fs-micro: 0.6875rem;
+  --fs-small: 0.8125rem;
+  --fs-body: 0.9375rem;
+
+  font-family: var(--sans);
   font-synthesis: none;
   font-variant-ligatures: contextual;
   text-rendering: optimizeLegibility;
@@ -82,7 +119,7 @@
   }
 
   :focus-visible {
-    outline: 3px solid var(--volt);
+    outline: 2px solid var(--volt);
     outline-offset: 2px;
   }
 }
@@ -90,20 +127,58 @@
 @layer components {
   /* ---------- Type ---------- */
 
+  /* The whole chrome scale. Three steps, no arbitrary values in the markup. */
+  .t-micro { font-size: var(--fs-micro); }
+  .t-small { font-size: var(--fs-small); }
+  .t-body { font-size: var(--fs-body); }
+
   .display {
     font-family: var(--display);
     font-weight: 400;
     letter-spacing: -0.02em;
     text-transform: uppercase;
-    line-height: 0.95;
+    line-height: 0.98;
+  }
+
+  /*
+    Archivo Black below ~18px turns into a smudge, so headings that small use
+    the body face at its heaviest weight instead of the display face.
+  */
+  .title-sm {
+    font-family: var(--sans);
+    font-size: 1.0625rem;
+    font-weight: 700;
+    letter-spacing: -0.005em;
+    line-height: 1.35;
   }
 
   .eyebrow {
-    font-size: 0.68rem;
-    font-weight: 700;
-    letter-spacing: 0.18em;
+    font-size: var(--fs-micro);
+    font-weight: 600;
+    letter-spacing: 0.14em;
     text-transform: uppercase;
     color: var(--ink-faint);
+  }
+
+  /*
+    Keyboard shortcuts read as a key, not as prose. Sentence-level text and a
+    shortcut were being run together on one line separated by a middot, which
+    put a model description and a keybinding in the same register.
+  */
+  .kbd {
+    display: inline-block;
+    padding: 0.1rem 0.35rem;
+    border: 1px solid var(--edge);
+    background: var(--slab-deep);
+    color: var(--ink-mute);
+    font-family: var(--mono);
+    font-size: var(--fs-micro);
+    line-height: 1.5;
+  }
+
+  /* Machine text: prompts, model ids, anything the user types verbatim. */
+  .mono {
+    font-family: var(--mono);
   }
 
   /* ---------- Surfaces ---------- */
@@ -111,78 +186,87 @@
   /* Printed grid. Hard 1px lines, no mask fade — brutalism doesn't fade out. */
   .app-grid {
     background-image:
-      linear-gradient(rgba(255, 255, 255, 0.045) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(255, 255, 255, 0.045) 1px, transparent 1px);
-    background-size: 64px 64px;
+      linear-gradient(rgba(255, 255, 255, 0.028) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.028) 1px, transparent 1px);
+    background-size: 76px 76px;
   }
 
+  /*
+    Panels carry no shadow at all. Under rule 2 an offset means "you can press
+    this", and a panel is not pressable — the old ghost shadow on every panel
+    was what diluted the signal for the buttons sitting inside it.
+  */
   .brut-panel {
     background: var(--slab);
-    border: var(--border-w) solid var(--ink);
-    box-shadow: 6px 6px 0 rgba(255, 255, 255, 0.14);
+    border: var(--border-w) solid var(--edge);
   }
 
   .brut-slab {
     background: var(--slab-deep);
-    border: var(--border-w) solid rgba(255, 255, 255, 0.22);
+    border: var(--border-w) solid var(--edge-soft);
   }
 
   .brut-divider {
-    border-top: var(--border-w) solid rgba(255, 255, 255, 0.16);
+    border-top: var(--border-w) solid var(--edge-soft);
   }
 
   /* ---------- Press physics ---------- */
 
   /*
     Interactive elements sit on a hard offset and travel into it when used, so
-    a click reads as a physical press rather than a color change.
+    a click reads as a physical press rather than a colour change.
   */
   .brut-press {
-    box-shadow: 4px 4px 0 var(--press-color, var(--ink));
+    box-shadow: 3px 3px 0 var(--press-color, var(--edge));
     transition:
       transform 70ms cubic-bezier(0.2, 0, 0, 1),
       box-shadow 70ms cubic-bezier(0.2, 0, 0, 1),
-      background-color 70ms linear;
+      background-color 70ms linear,
+      border-color 70ms linear;
   }
 
   .brut-press:hover:not(:disabled) {
     transform: translate(-1px, -1px);
-    box-shadow: 5px 5px 0 var(--press-color, var(--ink));
+    box-shadow: 4px 4px 0 var(--press-color, var(--edge));
   }
 
   .brut-press:active:not(:disabled) {
-    transform: translate(4px, 4px);
-    box-shadow: 0 0 0 var(--press-color, var(--ink));
+    transform: translate(3px, 3px);
+    box-shadow: 0 0 0 var(--press-color, var(--edge));
   }
 
   .brut-press:disabled {
-    box-shadow: 2px 2px 0 rgba(255, 255, 255, 0.2);
-    opacity: 0.5;
+    box-shadow: 2px 2px 0 var(--edge-soft);
+    opacity: 0.45;
   }
 
+  /* The one saturated thing on the page, so it needs no help to be found. */
   .btn-volt {
     background: var(--volt);
-    border: var(--border-w) solid var(--ink);
+    border: var(--border-w) solid var(--volt);
     color: #0a0a0a;
     font-family: var(--display);
     text-transform: uppercase;
     letter-spacing: 0.01em;
-    --press-color: #ffffff;
+    --press-color: rgba(240, 241, 247, 0.55);
   }
 
   .btn-volt:hover:not(:disabled) {
     background: #fff06b;
+    border-color: #fff06b;
   }
 
   .btn-ghost {
     background: var(--slab-deep);
-    border: var(--border-w) solid var(--ink);
+    border: var(--border-w) solid var(--edge);
     color: var(--ink);
-    --press-color: rgba(255, 255, 255, 0.45);
+    font-weight: 600;
+    --press-color: var(--edge-soft);
   }
 
   .btn-ghost:hover:not(:disabled) {
-    background: #1d1f2c;
+    background: #1b1c27;
+    border-color: var(--edge-strong);
   }
 
   .btn-alarm:hover:not(:disabled) {
@@ -194,25 +278,39 @@
   /* ---------- Tag identity ---------- */
 
   /*
-    Eight fully saturated hues, one per anatomy field. They carry black text on
-    solid fills — the loudest thing in the interface, because the tags are what
-    the user is actually manipulating.
+    Eight hues, one per anatomy field, tuned to roughly equal perceived
+    lightness (L* ≈ 72–78) and moderate chroma. They were fully saturated
+    before, which meant the yellow burned a hole in the row while the violet
+    disappeared — the set has to read as one family for the colour to work as
+    an index rather than as noise. All eight clear 7:1 against black text.
   */
-  .tag-task { --tag: #ff4d4d; }
-  .tag-context_files { --tag: #4cc9ff; }
-  .tag-reference { --tag: #3ddc84; }
-  .tag-success_brief { --tag: #ffc93c; }
-  .tag-rules { --tag: #ff6ec7; }
-  .tag-conversation { --tag: #b36bff; }
-  .tag-plan { --tag: #ff8a3d; }
-  .tag-alignment { --tag: #00d9c0; }
-  .tag-neutral { --tag: #c3c8d8; }
+  .tag-task { --tag: #f2707a; }
+  .tag-context_files { --tag: #6bb6e8; }
+  .tag-reference { --tag: #66c98d; }
+  .tag-success_brief { --tag: #d9ae5c; }
+  .tag-rules { --tag: #e089c4; }
+  .tag-conversation { --tag: #a892e8; }
+  .tag-plan { --tag: #e8945e; }
+  .tag-alignment { --tag: #5cc3b6; }
+  .tag-neutral { --tag: #a8adc0; }
 
-  /* A shaded face of each tag color, used as the extruded side of a block. */
-  .tag-shell,
-  .tag-chip,
-  .stack-bar {
-    --tag-deep: color-mix(in srgb, var(--tag, #fff) 42%, #000);
+  /*
+    A shaded face of each tag colour, used as the extruded side of a block and
+    as the quiet border weight. Derived on the tag class itself rather than on
+    the components that consume it, so anything carrying `tag-<field>` gets
+    both halves of the pair.
+  */
+  .tag-task,
+  .tag-context_files,
+  .tag-reference,
+  .tag-success_brief,
+  .tag-rules,
+  .tag-conversation,
+  .tag-plan,
+  .tag-alignment,
+  .tag-neutral {
+    --tag-deep: color-mix(in srgb, var(--tag) 45%, #000);
+    --tag-dark: color-mix(in srgb, var(--tag) 28%, #000);
   }
 
   /*
@@ -220,207 +318,300 @@
     than a floating shadow, so each tile reads as a block with mass — and the
     depth animates through a build sequence:
 
-      hover        lifted, ready to place   (8px)
-      resting      sitting in the wall      (6px)
-      focus-within seated, mortar set       (3px)
+      hover        lifted, ready to place   (5px)
+      resting      sitting in the wall      (4px)
+      focus-within seated, mortar set       (2px)
 
     They deliberately never translate on hover: a transform here would create a
     stacking context and trap each tile's own tooltip behind the next tile.
+
+    Under rule 4 the tile itself is neutral. Its hue survives in three places
+    only — the keyline under the header, the header label, and the shaded face
+    it sits on — which is enough to tell eight fields apart and far short of
+    what it takes to compete with the refine button.
   */
   .tag-shell {
     position: relative;
     background: var(--slab);
-    border-color: var(--tag, var(--ink));
-    box-shadow: 6px 6px 0 var(--tag-deep);
-    transition: box-shadow 90ms linear;
+    border-color: var(--edge-soft);
+    box-shadow: 4px 4px 0 var(--tag-dark);
+    transition:
+      box-shadow 90ms linear,
+      border-color 90ms linear;
   }
 
   .tag-shell:hover {
-    box-shadow: 8px 8px 0 var(--tag-deep);
+    border-color: var(--edge);
+    box-shadow: 5px 5px 0 var(--tag-dark);
   }
 
   .tag-shell:focus-within {
-    box-shadow: 3px 3px 0 var(--tag-deep);
+    border-color: var(--edge);
+    box-shadow: 2px 2px 0 var(--tag-deep);
+  }
+
+  /* The field's index: one hue rule and one hue word over a neutral ground. */
+  .tag-head {
+    background: var(--slab-deep);
+    border-bottom: var(--border-w) solid var(--tag, var(--edge));
+  }
+
+  .tag-head__name {
+    color: var(--tag, var(--ink));
+    font-weight: 700;
+  }
+
+  .tag-head__name:hover {
+    color: var(--ink);
   }
 
   /*
-    Connector studs on the top edge. One element plus two hard box-shadow
-    copies — they sit in the grid gutter so a tile's studs meet the underside
-    of the tile above it, and the column reads as a stacked course.
+    Remove sits quiet until you reach for it, then takes the field's own colour
+    so it is unmistakably that tile's control and not the next one's.
   */
-  .tag-shell::before {
-    content: "";
-    position: absolute;
-    top: -0.5rem;
-    left: 0.85rem;
-    width: 0.7rem;
-    height: 0.5rem;
-    background: var(--tag, var(--ink));
-    box-shadow:
-      1.3rem 0 0 var(--tag, var(--ink)),
-      2.6rem 0 0 var(--tag, var(--ink));
+  .tag-remove {
+    border-left: var(--border-w) solid var(--edge-soft);
+    color: var(--ink-faint);
+    transition:
+      background-color 70ms linear,
+      color 70ms linear;
   }
 
-  /* Solid color block with black text — the brutalist chip. */
-  .tag-chip {
-    background: var(--tag, var(--ink));
+  .tag-remove:hover {
+    background: var(--tag);
     color: #0a0a0a;
-    border: var(--border-w) solid #0a0a0a;
-    font-weight: 700;
+  }
+
+  /*
+    Quick-add chips. These were solid hue fills, which put the whole palette on
+    screen a second time directly under the grid that already carried it — the
+    marker square does the same identifying job at a fraction of the area.
+  */
+  .tag-pill {
+    background: var(--slab-deep);
+    border: var(--border-w) solid var(--edge-soft);
+    color: var(--ink-mute);
+    font-weight: 600;
+    --press-color: var(--edge-soft);
+  }
+
+  .tag-pill:hover:not(:disabled) {
+    border-color: var(--tag, var(--edge));
+    color: var(--ink);
+  }
+
+  .tag-pill__key {
+    width: 0.5rem;
+    height: 0.5rem;
+    flex-shrink: 0;
+    background: var(--tag, var(--ink));
   }
 
   .tag-label {
     color: var(--tag, var(--ink));
   }
 
-  /* ---------- The manifold ---------- */
+  /* ---------- Star border ---------- */
 
   /*
-    Plumbing threaded along the underside of the tag blocks and down into the
-    prompt box. Drawn over the tiles rather than behind them, so the slug stays
-    visible for the whole run — it rides the tiles' bottom borders, where it
-    covers structure instead of content.
+    Deliberately not clipped. An earlier pass wrapped this in `overflow: hidden`
+    to keep a sliding element on the tile, and that is precisely what made the
+    effect read as a coloured smear rather than as a light — the halo had
+    nowhere to land. Light is only legible as light when some of it falls on the
+    surroundings, so this spills into the grid gutter on purpose.
   */
-  .pipe-layer {
+  .star-border {
     position: absolute;
     inset: 0;
-    z-index: 4;
-    overflow: visible;
+    z-index: 5;
     pointer-events: none;
   }
 
-  .pipe-casing {
-    fill: none;
-    stroke: #0a0a0a;
-    stroke-width: 9;
-    stroke-linejoin: miter;
-    stroke-linecap: square;
-  }
+  /*
+    The filament. A conic gradient turned through a full circle, masked to the
+    border ring — transparent for most of its sweep, then the field's hue
+    ramping into a white core and back out.
 
-  .pipe-bore {
-    fill: none;
-    stroke: #454b63;
-    stroke-width: 3;
-    stroke-linejoin: miter;
-    stroke-linecap: square;
+    The core is white rather than the hue because that is what emission looks
+    like: a source bright enough to read as a source blows out at the centre and
+    leaves its colour in the falloff. Hue all the way through reads as a painted
+    line no matter how bright it gets.
+  */
+  .star-border__ring {
+    position: absolute;
+    inset: 0;
+    padding: var(--star-thickness, 2px);
+    /*
+      A tight arc, not a long smear. Spread over a quarter of the perimeter the
+      light stops having a location, and a light you cannot point at reads as a
+      gradient someone applied rather than as something travelling.
+    */
+    background: conic-gradient(
+      from var(--star-angle),
+      transparent 0%,
+      transparent 3%,
+      var(--star-color) 7%,
+      #ffffff 10%,
+      var(--star-color) 13%,
+      transparent 17%
+    );
+    /*
+      Webkit aliases first, standard last. The `-webkit-mask` shorthand resets
+      mask-composite to `add`, so declaring it after `mask-composite: exclude`
+      silently undoes the exclude — and an un-excluded mask is just a filled
+      rectangle, which turns the ring back into a raw conic wedge lying across
+      the tile. That is not a subtle failure; it is the whole effect inverted.
+    */
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    animation: star-orbit var(--star-speed, 1.8s) linear infinite;
+    animation-delay: var(--star-delay, 0s);
   }
 
   /*
-    Joinery. The flange carries the brick's own color so the connection reads
-    as plumbed into that specific block, and it is drawn over the run so the
-    pipe disappears into the coupling instead of passing behind it.
+    The halo. Blurring here rather than on the ring is not a preference — CSS
+    applies filter before mask, so a blur set on the ring would be generated and
+    then clipped away by the mask that shapes it. Blurring the parent lets the
+    already-masked ring bleed outward.
   */
-  .pipe-flange {
-    stroke: #0a0a0a;
-    stroke-width: 2;
+  .star-border__bloom {
+    position: absolute;
+    inset: 0;
+    filter: blur(9px);
+    opacity: 1;
   }
 
-  .pipe-bolt {
-    fill: #0a0a0a;
-  }
-
-  .pipe-joint {
-    fill: #0a0a0a;
-  }
-
-  .pipe-joint-core {
-    fill: #454b63;
-  }
-
-  /* Sealed head of the run. */
-  .pipe-cap {
-    fill: #0a0a0a;
-    stroke: #454b63;
-    stroke-width: 2;
-  }
-
-  .pipe-cap-core {
-    fill: #454b63;
-  }
+  /* ---------- The core ---------- */
 
   /*
-    The travelling swell. Same path as the run, drawn heavier and clipped to a
-    short dash — shoulder first, then the peak on top, then the bright core
-    showing what is being pushed through. Round caps taper the ends.
+    A hard casing around the one soft thing on the page. Square, 2px, no radius
+    and no shadow — a shadow would claim it is pressable and it is not.
+
+    The overflow clip is the whole point: the shader paints to the edge of its
+    own box, and letting it meet the panel without a cut is what would turn a
+    deliberate exception into a smudge.
   */
-  .pipe-swell {
-    transition: opacity 160ms linear;
+  /*
+    Sized off the row rather than pinned to 3rem. The refine button beside it
+    stretches to whatever the control row ends up being, so a fixed square sat
+    4px short of it — close enough to look misaligned rather than deliberate.
+    Stretch sets the height, aspect-ratio recovers the width, and the square
+    tracks the button at any row height.
+  */
+  /*
+    Built into the outlet of the prompt box rather than parked beside it. The
+    field's own border closes three sides, so the core carries only the seam
+    that separates it from the text — the same joint the model select uses, and
+    the reason the two read as one instrument instead of a control and an
+    ornament that happen to be adjacent.
+
+    Sizing is deliberately explicit rather than left to `aspect-ratio`. Flex
+    resolves an item's main size before stretching its cross size, so a nested
+    square has no definite height to derive a width from at the moment the width
+    is decided — it falls back to the content, and the content is a 100%-wide
+    shader canvas, which is circular. That collapses the core to nothing.
+
+    So the width is stated, and it is stated as the field's own content box:
+    the field is min-h-12 with a 2px border on each side. Matching that is what
+    keeps the core square while `align-self: stretch` holds it flush to the
+    field's top and bottom edges.
+  */
+  .engine-core {
+    --core-size: calc(3rem - var(--border-w) * 2);
+
+    position: relative;
+    align-self: stretch;
+    width: var(--core-size);
+    flex-shrink: 0;
+    overflow: hidden;
+    border-left: var(--border-w) solid var(--edge);
   }
 
-  .pipe-swell-shoulder,
-  .pipe-swell-peak,
-  .pipe-swell-core {
-    fill: none;
-    stroke-linecap: round;
-    /* Round the bends so fluid flows through a corner instead of spiking. */
-    stroke-linejoin: round;
-  }
-
-  .pipe-swell-shoulder {
-    stroke: #0a0a0a;
-    stroke-width: 14;
-  }
-
-  .pipe-swell-peak {
-    stroke: #0a0a0a;
-    stroke-width: 20;
-  }
-
-  .pipe-swell-core {
-    stroke: var(--volt);
-    stroke-width: 8;
-  }
-
-  /* The inlet takes the charge when the slug lands. */
-  .pipe-inlet.pipe-arrived {
-    animation: pipe-arrived 500ms cubic-bezier(0.2, 0, 0, 1);
+  .engine-core > * {
+    display: block;
+    width: 100%;
+    height: 100%;
   }
 
   /* ---------- Signature: the stack ---------- */
 
   /*
     The logo is three stacked bars cut by a vertical slot. The result breakdown
-    rebuilds that mark at full width — each field becomes one bar in the stack,
-    and the slot runs straight through the column.
+    rebuilds that mark at full width — each field is one bar, and the slot runs
+    the whole column as the boundary between a field's colour key and its text.
+
+    The slot used to land mid-swatch, which read as a defect rather than a
+    device. Sitting on the column boundary it does a job: the row separators
+    are dim and the slot is bright, so it stays legible as one unbroken cut
+    through the whole stack.
   */
   .stack {
     position: relative;
+    border: var(--border-w) solid var(--edge);
+    background: var(--slab-deep);
   }
 
   .stack::before {
     content: "";
     position: absolute;
-    top: -0.35rem;
-    bottom: -0.35rem;
-    left: 2.25rem;
+    top: 0;
+    bottom: 0;
+    left: calc(3.25rem - 1px);
     width: var(--border-w);
-    background: var(--ink);
-    opacity: 0.9;
+    background: var(--edge-strong);
     z-index: 2;
+    pointer-events: none;
   }
 
-  .stack-bar {
-    position: relative;
+  .stack-row {
     display: grid;
-    grid-template-columns: 4.5rem 1fr;
+    grid-template-columns: 3.25rem 1fr;
     align-items: stretch;
-    border: var(--border-w) solid var(--ink);
-    background: var(--slab-deep);
   }
 
-  .stack-bar + .stack-bar {
-    margin-top: -2px;
+  .stack-row + .stack-row {
+    border-top: var(--border-w) solid var(--edge-soft);
   }
 
-  .stack-bar__key {
-    background: var(--tag, var(--ink));
+  /* The key block is the field's index: its colour and its icon, nothing else. */
+  .stack-row__key {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--tag);
+    color: #0a0a0a;
+  }
+
+  .stack-row__value {
+    color: var(--ink-mute);
+  }
+
+  /*
+    A field the refiner had nothing for reads as absent rather than as another
+    filled row. Eight bars at identical weight is what made the block
+    monotonous, and which fields came back empty is the part worth seeing.
+  */
+  .stack-row--empty .stack-row__key {
+    background: var(--tag-dark);
+    color: var(--tag);
+  }
+
+  .stack-row--empty .tag-label,
+  .stack-row--empty .stack-row__value {
+    color: var(--ink-faint);
   }
 
   /* ---------- Logo ---------- */
 
   .logo-lockup {
     position: relative;
-    width: clamp(11rem, 12vw, 14rem);
+    width: clamp(10rem, 11vw, 12.5rem);
     aspect-ratio: 753 / 320;
     overflow: hidden;
   }
@@ -435,9 +626,9 @@
   }
 
   .footer-link {
-    color: var(--ink);
+    color: var(--ink-mute);
     text-decoration: underline;
-    text-decoration-thickness: 2px;
+    text-decoration-thickness: 1px;
     text-underline-offset: 4px;
     transition: color 90ms linear;
   }
@@ -462,7 +653,7 @@
   .tour-ring {
     position: fixed;
     z-index: 61;
-    border: 3px solid var(--volt);
+    border: 2px solid var(--volt);
     pointer-events: none;
     transition: opacity 120ms linear;
   }
@@ -494,21 +685,21 @@
 
   .custom-tooltip {
     position: absolute;
-    bottom: calc(100% + 0.65rem);
+    bottom: calc(100% + 0.6rem);
     left: 50%;
     z-index: 80;
     width: max-content;
     max-width: min(19rem, calc(100vw - 2rem));
-    padding: 0.6rem 0.7rem;
-    border: var(--border-w) solid var(--ink);
+    padding: 0.6rem 0.75rem;
+    border: var(--border-w) solid var(--edge-strong);
     border-radius: 0;
-    background: #0a0a0a;
-    box-shadow: 4px 4px 0 var(--volt);
+    background: #07080d;
     color: var(--ink);
-    font-size: 0.72rem;
-    font-weight: 500;
+    font-family: var(--sans);
+    font-size: var(--fs-small);
+    font-weight: 400;
     letter-spacing: 0;
-    line-height: 1.45;
+    line-height: 1.5;
     opacity: 0;
     pointer-events: none;
     text-align: left;
@@ -522,7 +713,7 @@
   }
 
   .custom-tooltip--bottom {
-    top: calc(100% + 0.65rem);
+    top: calc(100% + 0.6rem);
     bottom: auto;
   }
 
@@ -550,19 +741,18 @@
     animation: blink 900ms steps(1, end) infinite;
   }
 
+  .animate-cue-in {
+    animation: cue-in 160ms cubic-bezier(0.2, 0, 0, 1) both;
+  }
+
+  /* Two positions, not a glide — an indicator lamp rather than a bounce. */
+  .animate-nudge {
+    animation: cue-nudge 1100ms steps(1, end) infinite;
+  }
+
   .scrollbar-brut {
     scrollbar-width: thin;
-    scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
-  }
-}
-
-@media (max-width: 640px) {
-  .stack::before {
-    left: 1.5rem;
-  }
-
-  .stack-bar {
-    grid-template-columns: 3rem 1fr;
+    scrollbar-color: rgba(240, 241, 247, 0.22) transparent;
   }
 }
 
@@ -605,14 +795,45 @@
   50%, 100% { opacity: 0.15; }
 }
 
-@keyframes pipe-arrived {
-  0% {
-    border-color: var(--volt);
-    background-color: rgba(255, 229, 0, 0.22);
+@keyframes cue-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
   }
-  100% {
-    border-color: #ffffff;
-    background-color: var(--slab-deep);
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes cue-nudge {
+  0%, 62% { transform: translateY(0); }
+  63%, 100% { transform: translateY(3px); }
+}
+
+/*
+  The two halves of the star border, travelling in opposite directions so the
+  light meets itself at the corners. These live here rather than in a Tailwind
+  config because v4 has no config file to put them in.
+*/
+/*
+  A conic gradient's `from` angle is not animatable as a plain custom property —
+  an unregistered property interpolates as a string, so it would jump from 0deg
+  to 360deg with nothing in between. Registering it with a type is what makes
+  the browser tween it, and therefore what makes the light travel at all.
+*/
+@property --star-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+@keyframes star-orbit {
+  from {
+    --star-angle: 0deg;
+  }
+  to {
+    --star-angle: 360deg;
   }
 }
 

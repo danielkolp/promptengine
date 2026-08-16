@@ -11,11 +11,11 @@ function CustomTooltip({ id, text }) {
 
 export default function SuggestionDropdown({ suggestions, onPick, onClose }) {
   return (
-    <div data-tour="suggestions" className="brut-panel animate-dropdown-in p-4">
-      <div className="mb-4 flex items-start justify-between gap-4">
+    <div data-tour="suggestions" className="brut-panel animate-dropdown-in p-5">
+      <div className="mb-5 flex items-start justify-between gap-4">
         <div>
-          <p className="display text-base text-white">Add a tag</p>
-          <p className="mt-1 text-xs text-[var(--ink-faint)]">
+          <p className="title-sm text-[var(--ink)]">Add a tag</p>
+          <p className="t-small mt-1 text-[var(--ink-faint)]">
             Pick a suggestion to add a filled tag block
           </p>
         </div>
@@ -25,7 +25,7 @@ export default function SuggestionDropdown({ suggestions, onPick, onClose }) {
           onClick={onClose}
           className="btn-ghost brut-press inline-flex h-9 w-9 shrink-0 items-center justify-center"
         >
-          <X className="h-4 w-4" strokeWidth={3} />
+          <X className="h-4 w-4" strokeWidth={2.5} />
         </button>
       </div>
 
@@ -37,8 +37,8 @@ export default function SuggestionDropdown({ suggestions, onPick, onClose }) {
           }
 
           return (
-            <div key={group} className={`tag-${group} brut-slab border-[color:var(--tag)] p-3`}>
-              <span className="tag-label mb-2.5 block text-[0.68rem] font-bold uppercase tracking-[0.12em]">
+            <div key={group} className={`tag-${group} brut-slab p-3.5`}>
+              <span className="tag-label t-micro mb-3 block font-semibold uppercase tracking-[0.12em]">
                 {config.label}
               </span>
               <div className="flex flex-wrap gap-2">
@@ -52,10 +52,10 @@ export default function SuggestionDropdown({ suggestions, onPick, onClose }) {
                       onClick={() => onPick(group, item)}
                       aria-describedby={tooltipId}
                       aria-label={`Add ${item} to ${config.label}: ${config.tooltip}`}
-                      className="tooltip-anchor brut-press inline-flex items-center gap-1.5 border-2 border-[color:var(--tag)] bg-[var(--slab)] px-2.5 py-1.5 text-xs text-white transition hover:bg-[color:var(--tag)] hover:text-[#0a0a0a]"
-                      style={{ '--press-color': 'var(--tag)' }}
+                      className="tooltip-anchor brut-press t-small inline-flex items-center gap-1.5 border-2 border-[var(--edge-soft)] bg-[var(--slab)] px-2.5 py-1.5 text-[var(--ink)] transition hover:border-[color:var(--tag)] hover:bg-[color:var(--tag)] hover:text-[#0a0a0a]"
+                      style={{ '--press-color': 'var(--tag-deep)' }}
                     >
-                      <Plus className="h-3 w-3" strokeWidth={3} />
+                      <Plus className="h-3 w-3" strokeWidth={2.75} />
                       {item}
                       <CustomTooltip id={tooltipId} text={`${config.label}: ${config.tooltip}`} />
                     </button>

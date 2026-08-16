@@ -1,11 +1,10 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import Particles, { initParticlesEngine } from '@tsparticles/react'
-import { loadSlim } from '@tsparticles/slim'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { GraduationCap, History, Settings2 } from 'lucide-react'
 import PromptInput from './components/PromptInput'
 import ResultPanel from './components/ResultPanel'
 import HistoryPanel from './components/HistoryPanel'
 import ApiSettings from './components/ApiSettings'
+import ResultCue from './components/ResultCue'
 import TourGuide from './components/TourGuide'
 import { refinePromptWithGroq } from './utils/groqClient'
 import { createDefaultTags, createTag, DEFAULT_TARGET_MODEL } from './utils/promptTemplates'
@@ -19,20 +18,7 @@ import {
 import logo from './assets/logo.png'
 import './index.css'
 
-const StableParticles = memo(Particles)
 const DEFAULT_MODEL = 'llama-3.3-70b-versatile'
-
-let particlesEngineInitPromise
-
-function initPromptParticles() {
-  if (!particlesEngineInitPromise) {
-    particlesEngineInitPromise = initParticlesEngine(async (engine) => {
-      await loadSlim(engine)
-    })
-  }
-
-  return particlesEngineInitPromise
-}
 
 function readSetting(key, fallback) {
   try {
@@ -66,51 +52,18 @@ function App() {
   const [tourOpen, setTourOpen] = useState(false)
 
   const inputRef = useRef(null)
+  const resultRef = useRef(null)
   const tourSnapshot = useRef(null)
-  const [particlesReady, setParticlesReady] = useState(false)
 
-  // Flat white squares, no links, no twinkle — motion without softness.
-  const particleOptions = useMemo(() => ({
-    fullScreen: { enable: false },
-    fpsLimit: 60,
-    interactivity: {
-      events: {
-        onClick: { enable: false },
-        onHover: { enable: false },
-        resize: true,
-      },
-    },
-    particles: {
-      color: { value: '#ffffff' },
-      links: { enable: false },
-      move: {
-        enable: true,
-        speed: 0.32,
-        outModes: { default: 'out' },
-      },
-      number: {
-        density: { enable: true, area: 900 },
-        value: 70,
-      },
-      opacity: { value: 0.16 },
-      shape: { type: 'square' },
-      size: { value: 2.5 },
-    },
-    detectRetina: true,
-  }), [])
+  // Announcement for the scroll cue. The sequence number is what remounts the
+  // cue, so each result gets its own "seen yet?" state rather than inheriting
+  // the last one's.
+  const [resultCue, setResultCue] = useState(null)
+  const cueSeq = useRef(0)
 
-  useEffect(() => {
-    let mounted = true
-
-    initPromptParticles().then(() => {
-      if (mounted) {
-        setParticlesReady(true)
-      }
-    })
-
-    return () => {
-      mounted = false
-    }
+  const raiseCue = useCallback((message, tone) => {
+    cueSeq.current += 1
+    setResultCue({ seq: cueSeq.current, message, tone })
   }, [])
 
   useEffect(() => {
@@ -137,6 +90,7 @@ function App() {
   const handleRefine = async () => {
     setLoading(true)
     setResult(null)
+    setResultCue(null)
     setShowSuggestions(false)
 
     const tagPayload = tags.reduce((payload, tag) => {
@@ -162,6 +116,7 @@ function App() {
 
       setResult(res)
       setHistory(saveEntry({ tags, freeText, targetModel, result: res }))
+      raiseCue('The prompt has been generated', 'done')
     } catch (err) {
       setResult({
         error: {
@@ -172,6 +127,7 @@ function App() {
           code: err?.code,
         },
       })
+      raiseCue('Refining failed', 'failed')
     } finally {
       setLoading(false)
     }
@@ -182,6 +138,7 @@ function App() {
   const handleReuse = (text) => {
     setFreeText(text)
     setResult(null)
+    setResultCue(null)
     inputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
@@ -191,6 +148,7 @@ function App() {
     setTargetModel(entry.targetModel || DEFAULT_TARGET_MODEL)
     setResult(entry.result)
     setHistoryOpen(false)
+    raiseCue('Prompt restored from history', 'done')
   }
 
   const handleSaveSettings = (nextModel) => {
@@ -223,6 +181,19 @@ function App() {
     tourSnapshot.current = null
   }
 
+  /*
+    What the core is showing. Derived rather than stored: every one of these is
+    already knowable from loading and result, and a second copy of the same
+    state is a second thing that can be wrong.
+  */
+  const engineStatus = loading
+    ? 'thinking'
+    : result?.error
+      ? 'failed'
+      : result
+        ? 'done'
+        : 'idle'
+
   const tourApi = useMemo(() => ({
     setFreeText,
     setTargetModel,
@@ -237,19 +208,17 @@ function App() {
   }), [])
 
   return (
-    <main className="relative min-h-screen overflow-x-hidden text-white">
+    <main className="relative min-h-screen overflow-x-hidden text-[var(--ink)]">
+      {/*
+        The only texture behind the panels. A drifting particle field used to
+        run over this one; two textures competing behind the same content is
+        one texture too many, and ambient drift is the opposite of a system
+        whose first rule is that nothing is soft.
+      */}
       <div className="app-grid pointer-events-none fixed inset-0 z-0" aria-hidden="true" />
 
-      {particlesReady && (
-        <StableParticles
-          id="tsparticles"
-          className="pointer-events-none fixed inset-0 z-0"
-          options={particleOptions}
-        />
-      )}
-
       <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-6xl flex-col px-4 sm:px-6 lg:px-8">
-        <header className="flex items-center justify-between gap-4 border-b-2 border-white py-4">
+        <header className="flex items-center justify-between gap-4 border-b-2 border-[var(--edge)] py-4">
           <span className="logo-lockup block shrink-0">
             <img src={logo} alt="Prompt Engine" />
           </span>
@@ -258,21 +227,26 @@ function App() {
             <button
               type="button"
               onClick={startTour}
-              className="btn-ghost brut-press inline-flex items-center gap-2 px-3 py-2.5 text-xs font-semibold uppercase tracking-[0.08em]"
+              className="btn-ghost brut-press t-small inline-flex items-center gap-2 px-3 py-2.5"
             >
-              <GraduationCap className="h-4 w-4" strokeWidth={2.5} />
-              <span className="hidden sm:inline">How do I use this?</span>
+              <GraduationCap className="h-4 w-4" strokeWidth={2.25} />
+              <span className="hidden sm:inline">Take the tour</span>
             </button>
             <button
               type="button"
               data-tour="history"
               onClick={() => setHistoryOpen(true)}
-              className="btn-ghost brut-press inline-flex items-center gap-2 px-3 py-2.5 text-xs font-semibold uppercase tracking-[0.08em]"
+              className="btn-ghost brut-press t-small inline-flex items-center gap-2 px-3 py-2.5"
             >
-              <History className="h-4 w-4" strokeWidth={2.5} />
+              <History className="h-4 w-4" strokeWidth={2.25} />
               <span className="hidden sm:inline">History</span>
+              {/*
+                A count is information, not an alarm. In volt it was a third
+                saturated element in the header competing with the one control
+                on the page that has to be found first.
+              */}
               {history.length > 0 && (
-                <span className="border-2 border-[#0a0a0a] bg-[var(--volt)] px-1.5 text-[0.65rem] font-bold text-[#0a0a0a]">
+                <span className="t-micro border-2 border-[var(--edge-soft)] px-1.5 font-semibold text-[var(--ink-mute)]">
                   {history.length}
                 </span>
               )}
@@ -283,23 +257,27 @@ function App() {
               aria-label="Open settings"
               className="btn-ghost brut-press inline-flex h-10 w-10 items-center justify-center"
             >
-              <Settings2 className="h-4 w-4" strokeWidth={2.5} />
+              <Settings2 className="h-4 w-4" strokeWidth={2.25} />
             </button>
           </div>
         </header>
 
-        <section className="flex-1 pb-16 pt-10 sm:pt-14">
-          <p className="eyebrow">Prompt refinement</p>
-          <h1 className="display mt-3 max-w-4xl text-[2.1rem] leading-[0.95] text-white sm:text-5xl lg:text-6xl">
-            Turn messy intent into
+        <section className="flex-1 pb-16 pt-12 sm:pt-16">
+          {/*
+            Wide enough that the line breaks after "into", which puts the volt
+            phrase on its own line. At the narrower measure it broke mid-phrase
+            and left "prompts" stranded on a third line.
+          */}
+          <h1 className="display max-w-4xl text-[2.15rem] text-[var(--ink)] sm:text-5xl lg:text-[3.5rem]">
+            Turn vague ideas into
             <span className="text-[var(--volt)]"> structured prompts</span>
           </h1>
-          <p className="mt-4 max-w-xl text-sm leading-6 text-[var(--ink-mute)] sm:text-base">
+          <p className="t-body mt-5 max-w-md leading-7 text-[var(--ink-mute)]">
             Fill in what you know. Leave out what you don&apos;t. The refiner
             writes the prompt that gets a usable answer.
           </p>
 
-          <div ref={inputRef} className="mt-10 scroll-mt-6">
+          <div ref={inputRef} className="mt-12 scroll-mt-6">
             <PromptInput
               tags={tags}
               setTags={setTags}
@@ -309,26 +287,39 @@ function App() {
               setTargetModel={setTargetModel}
               onRefine={handleRefine}
               loading={loading}
+              engineStatus={engineStatus}
               showSuggestions={showSuggestions}
               setShowSuggestions={setShowSuggestions}
             />
           </div>
 
-          <div className="mt-8">
+          <div ref={resultRef} className="mt-10 scroll-mt-6">
             <ResultPanel result={result} loading={loading} onReuse={handleReuse} />
           </div>
+
+          {/*
+            Stays mounted so the text swap is what triggers the announcement.
+            It reports every result, on screen or not — the visible cue below
+            only appears when the panel is out of view.
+          */}
+          <p className="sr-only" role="status" aria-live="polite">
+            {resultCue?.message ?? ''}
+          </p>
         </section>
 
-        <footer className="border-t-2 border-white/25 py-5 text-[0.7rem] uppercase tracking-[0.12em] text-[var(--ink-faint)]">
-          Prompt Engine · Made by Daniel Kolpakov ·{' '}
-          <a
-            href="https://danielkolp.github.io"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="footer-link"
-          >
-            Visit Portfolio
-          </a>
+        <footer className="brut-divider t-small flex flex-wrap items-center justify-between gap-x-4 gap-y-1 py-6 text-[var(--ink-faint)]">
+          <span>Prompt Engine</span>
+          <span>
+            Made by Daniel Kolpakov ·{' '}
+            <a
+              href="https://danielkolp.github.io"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="footer-link"
+            >
+              Portfolio
+            </a>
+          </span>
         </footer>
       </div>
 
@@ -348,6 +339,12 @@ function App() {
         model={groqModel}
         onSave={handleSaveSettings}
         onClose={() => setSettingsOpen(false)}
+      />
+
+      <ResultCue
+        key={resultCue?.seq}
+        panelRef={resultRef}
+        cue={loading ? null : resultCue}
       />
 
       <TourGuide open={tourOpen} onClose={endTour} api={tourApi} />
