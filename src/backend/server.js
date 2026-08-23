@@ -2,9 +2,9 @@ import http from 'node:http'
 import { existsSync, readFileSync } from 'node:fs'
 import { dirname, extname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { normalizeGroqModel } from '../utils/groqModels.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
-const DEFAULT_MODEL = 'llama-3.3-70b-versatile'
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions'
 const GROQ_TIMEOUT_MS = Number(process.env.GROQ_TIMEOUT_MS || 45_000)
 const PORT = Number(process.env.PORT || 3001)
@@ -583,6 +583,9 @@ function buildGroqError(response, data, responseText) {
 
 async function refinePrompt({ tags, activeFields, freeText, model, targetModel }) {
   const apiKey = process.env.GROQ_API_KEY
+  // The Settings UI intentionally permits a per-request override. Missing,
+  // malformed, and retired client values fall through to the server setting.
+  const groqModel = normalizeGroqModel(model, process.env.GROQ_MODEL)
   const target = normalizeTargetModel(targetModel)
 
   if (!apiKey) {
@@ -615,7 +618,7 @@ async function refinePrompt({ tags, activeFields, freeText, model, targetModel }
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: model || process.env.GROQ_MODEL || DEFAULT_MODEL,
+        model: groqModel,
         temperature: 0.35,
         response_format: { type: 'json_object' },
         messages: [
@@ -698,7 +701,7 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/health') {
       sendJson(req, res, 200, {
         ok: true,
-        model: process.env.GROQ_MODEL || DEFAULT_MODEL,
+        model: normalizeGroqModel(process.env.GROQ_MODEL),
         hasGroqKey: Boolean(process.env.GROQ_API_KEY),
         lastRefineError,
       })
@@ -739,9 +742,10 @@ const server = http.createServer(async (req, res) => {
       tags: body.tags || {},
       activeFields: body.activeFields || [],
       freeText: body.freeText || '',
-      model: body.model || DEFAULT_MODEL,
+      model: body.model,
       targetModel: body.targetModel,
     })
+    lastRefineError = null
     logBackendEvent('refine_success', {
       requestId: req.requestId,
       durationMs: Date.now() - startedAt,
@@ -754,5 +758,5 @@ const server = http.createServer(async (req, res) => {
 
 server.listen(PORT, () => {
   console.log(`Prompt Engine API listening on http://localhost:${PORT}`)
-  console.log(`Groq model: ${process.env.GROQ_MODEL || DEFAULT_MODEL}`)
+  console.log(`Groq model: ${normalizeGroqModel(process.env.GROQ_MODEL)}`)
 })

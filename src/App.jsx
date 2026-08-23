@@ -7,6 +7,7 @@ import ApiSettings from './components/ApiSettings'
 import ResultCue from './components/ResultCue'
 import TourGuide from './components/TourGuide'
 import { refinePromptWithGroq } from './utils/groqClient'
+import { DEFAULT_GROQ_MODEL, normalizeGroqModel } from './utils/groqModels'
 import { createDefaultTags, createTag, DEFAULT_TARGET_MODEL } from './utils/promptTemplates'
 import {
   clearHistory,
@@ -17,8 +18,6 @@ import {
 } from './utils/history'
 import logo from './assets/logo.png'
 import './index.css'
-
-const DEFAULT_MODEL = 'llama-3.3-70b-versatile'
 
 function readSetting(key, fallback) {
   try {
@@ -45,7 +44,8 @@ function App() {
 
   const [targetModel, setTargetModel] = useState(() =>
     readSetting('prompt_engine_target', DEFAULT_TARGET_MODEL))
-  const [groqModel, setGroqModel] = useState(() => readSetting('groq_model', DEFAULT_MODEL))
+  const [groqModel, setGroqModel] = useState(() =>
+    normalizeGroqModel(readSetting('groq_model', DEFAULT_GROQ_MODEL)))
   const [history, setHistory] = useState(() => loadHistory())
   const [historyOpen, setHistoryOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -69,6 +69,12 @@ function App() {
   useEffect(() => {
     writeSetting('prompt_engine_target', targetModel)
   }, [targetModel])
+
+  // Persist the normalized value on mount so browsers that saved a retired
+  // Groq model migrate without requiring a trip through Settings.
+  useEffect(() => {
+    writeSetting('groq_model', groqModel)
+  }, [groqModel])
 
   const closeOverlays = useCallback(() => {
     setHistoryOpen(false)
@@ -152,8 +158,7 @@ function App() {
   }
 
   const handleSaveSettings = (nextModel) => {
-    setGroqModel(nextModel)
-    writeSetting('groq_model', nextModel)
+    setGroqModel(normalizeGroqModel(nextModel))
   }
 
   // The tour types into the real fields, so anything already in progress is
@@ -333,13 +338,14 @@ function App() {
         onClearAll={() => setHistory(clearHistory())}
       />
 
-      <ApiSettings
-        key={groqModel}
-        open={settingsOpen}
-        model={groqModel}
-        onSave={handleSaveSettings}
-        onClose={() => setSettingsOpen(false)}
-      />
+      {settingsOpen && (
+        <ApiSettings
+          open
+          model={groqModel}
+          onSave={handleSaveSettings}
+          onClose={() => setSettingsOpen(false)}
+        />
+      )}
 
       <ResultCue
         key={resultCue?.seq}

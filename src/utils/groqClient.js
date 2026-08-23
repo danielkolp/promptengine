@@ -1,3 +1,5 @@
+import { DEFAULT_GROQ_MODEL, normalizeGroqModel } from './groqModels'
+
 export class PromptEngineApiError extends Error {
   constructor({ title = 'Prompt refinement failed', message, details, status, code }) {
     super(message)
@@ -183,10 +185,16 @@ export async function refinePromptWithGroq({
   tags,
   activeFields = Object.keys(tags || {}),
   freeText,
-  model = 'llama-3.3-70b-versatile',
+  model = DEFAULT_GROQ_MODEL,
   targetModel = 'generic',
 }) {
-  const body = JSON.stringify({ tags, activeFields, freeText, model, targetModel })
+  const body = JSON.stringify({
+    tags,
+    activeFields,
+    freeText,
+    model: normalizeGroqModel(model),
+    targetModel,
+  })
   let lastResponse
   let lastPayload
 

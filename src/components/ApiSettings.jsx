@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { RotateCcw, Save, X } from 'lucide-react'
-
-const DEFAULT_MODEL = 'llama-3.3-70b-versatile'
+import { DEFAULT_GROQ_MODEL } from '../utils/groqModels'
 
 export default function ApiSettings({ open, model, onSave, onClose }) {
   const [draftModel, setDraftModel] = useState(model)
@@ -9,7 +8,7 @@ export default function ApiSettings({ open, model, onSave, onClose }) {
   if (!open) return null
 
   const save = () => {
-    onSave(draftModel.trim() || DEFAULT_MODEL)
+    onSave(draftModel.trim() || DEFAULT_GROQ_MODEL)
     onClose()
   }
 
@@ -77,7 +76,7 @@ export default function ApiSettings({ open, model, onSave, onClose }) {
         <div className="mt-7 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <button
             type="button"
-            onClick={() => setDraftModel(DEFAULT_MODEL)}
+            onClick={() => setDraftModel(DEFAULT_GROQ_MODEL)}
             className="btn-ghost brut-press t-small inline-flex items-center justify-center gap-2 px-4 py-3"
           >
             <RotateCcw className="h-4 w-4" strokeWidth={2.25} />
