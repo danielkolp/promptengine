@@ -61,7 +61,7 @@ Environment variables:
 
 ```bash
 GROQ_API_KEY=your_groq_api_key
-GROQ_MODEL=llama-3.3-70b-versatile
+GROQ_MODEL=openai/gpt-oss-120b
 ```
 
 The Node server serves both `dist` and `/api/refine`, so `VITE_API_BASE` is not needed.
@@ -78,7 +78,7 @@ Set backend environment variables:
 
 ```bash
 GROQ_API_KEY=your_groq_api_key
-GROQ_MODEL=llama-3.3-70b-versatile
+GROQ_MODEL=openai/gpt-oss-120b
 ALLOWED_ORIGINS=https://danielkolp.github.io
 ```
 
